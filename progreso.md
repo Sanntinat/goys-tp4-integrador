@@ -10,7 +10,7 @@
 | Nombre | Usuario de GitHub | Rol en el grupo |
 |--------|-------------------|-----------------|
 | Santiago Natalichio Bestosini | `Sanntinat` | H1 Laboratorio, H2 Conectividad, H5 Defensa (con Tomás) |
-| Juan Bautista Cuenca |  | H3 Tablero |
+| Juan Bautista Cuenca | `baucuenca` | H3 Tablero |
 | Tomás Martin |  | H4 Atacante, H5 Defensa (con Santiago) |
 | Lautaro Aubert | `LauAubert` | H6 Automatización |
 
