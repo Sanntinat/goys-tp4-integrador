@@ -23,6 +23,7 @@
 | [D-15](#d-15) | 14/11 | La caída de un proveedor se detecta por el ping, no por BGP | Juan Bautista | Vigente |
 | [D-16](#d-16) | 14/11 | El INTRUSO es un container de la estación unido a ISP-1 por un segundo túnel UDP | Tomás | Vigente (cambia la propuesta) |
 | [D-17](#d-17) | 14/11 | GNS3 usa el rango UDP 20000–30000 para sus enlaces | Tomás | Vigente |
+| [D-18](#d-18) | 14/11 | En `psd`, los 3 s son la pausa máxima entre intentos, no una ventana | Tomás | Vigente (corrige la propuesta) |
 
 ---
 
@@ -213,3 +214,14 @@
   - Vale para cualquier PC con la app de NVIDIA. Síntoma: la estación no llega a `10.20.0.1` y `Get-NetUDPEndpoint` muestra `nvcontainer` en un puerto del rango de GNS3.
   - El cambio es por PC y no viaja con el proyecto. En la laptop de la demo hay que revisarlo antes de la feria.
 - **Evidencia:** [runbook H4, problemas conocidos](demo/runbooks/intruso.md#problemas-conocidos).
+
+<a id="d-18"></a>
+## D-18 — En `psd`, los 3 s son la pausa máxima entre intentos, no una ventana
+
+- **Contexto:** la propuesta (§3.3) y el documento explican la regla de detección como «un origen que prueba muchos puertos en 3 segundos». En las pruebas de H5, un escaneo de un puerto por segundo, que en 3 s suma como mucho 9 puntos, igual quedó bloqueado a los 20 s.
+- **Qué hace en realidad `psd=21,3s,3,1`:** suma 3 puntos por cada puerto bajo y 1 por cada puerto alto mientras el mismo origen no deje pasar **más de 3 s entre un intento y el siguiente**. Si la cadena llega a 21, el origen entra en `bloqueados`. No importa cuánto dure el escaneo, sino la pausa entre intentos.
+- **Decisión:** se mantienen los valores (`21,3s,3,1`) y se corrige la explicación en el runbook y en el documento final.
+- **Consecuencias:**
+  - La defensa detecta cualquier escaneo con pausas menores a 3 s, rápido o lento: el de la demo, en menos de 0,2 s; uno de un puerto por segundo, a los 20 s.
+  - Se le escapa un escaneo con pausas mayores a 3 s: uno de un puerto cada 4 s revisó 15 puertos en 64 s sin bloqueo. Ese es el límite que hay que declarar (propuesta §10).
+- **Evidencia:** [runbook H5](demo/runbooks/defensa.md), pruebas 3 y 4; `capturas/H5/H5-05`.
