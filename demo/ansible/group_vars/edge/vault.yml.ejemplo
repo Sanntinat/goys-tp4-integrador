@@ -1,0 +1,5 @@
+# Copiar como vault.yml (NO se sube: esta en .gitignore), poner la clave de "admin" del EDGE
+# (entrada de la base .kdbx) y cifrarlo:
+#   cp vault.yml.ejemplo vault.yml && nano vault.yml && ansible-vault encrypt vault.yml
+# La contrasena del vault tambien va en la base .kdbx ("ansible-vault (H6)").
+vault_clave_admin: "<CLAVE_ADMIN>"
