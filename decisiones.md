@@ -241,6 +241,6 @@
   - **Mandar el `.rsc` de H5 tal cual:** funciona, pero siempre rehace todo y no se puede mostrar la idempotencia.
   - **Un usuario `ansible` aparte:** suma otra clave para un único equipo; queda como mejora.
 - **Consecuencias:**
-  - La comparación de parámetros depende de cómo RouterOS 7.21 los imprime en `print terse`. Si alguno no coincide, el playbook rehace la regla en cada corrida (no rompe nada, pero `changed` no llega a 0). Se verifica en la prueba 2 del runbook.
+  - La comparación de parámetros depende de cómo RouterOS imprime cada valor en `print terse`. En 7.21.5 coincide: la segunda corrida da `changed=0` (prueba en un CHR aislado, `capturas/H6/H6-02`). Si una versión futura cambiara el formato, el playbook rehace la regla en cada corrida, sin romper nada.
   - `defensa-quitar.yml` también vacía `bloqueados`, así la demo se reinicia sin esperar los 2 minutos.
-- **Evidencia:** [runbook H6](demo/runbooks/automatizacion.md).
+- **Evidencia:** [runbook H6](demo/runbooks/automatizacion.md) y `capturas/H6/`.
