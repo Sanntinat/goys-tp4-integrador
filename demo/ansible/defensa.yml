@@ -1,0 +1,112 @@
+# H6: despliega la defensa de H5 en el EDGE (deteccion de escaneos con psd y bloqueo en raw).
+#
+#   ansible-playbook defensa.yml --ask-vault-pass            # aplica
+#   ansible-playbook defensa.yml --ask-vault-pass --check    # solo muestra que cambiaria
+#
+# Idempotente: primero lee que hay en el EDGE y toca solo lo que falta o esta distinto.
+# Una segunda corrida tiene que terminar con changed=0.
+# Vuelta atras: defensa-quitar.yml.
+
+- name: Defensa activa en el EDGE
+  hosts: edge
+  gather_facts: false
+
+  tasks:
+    - name: Leer el estado actual
+      ansible.builtin.import_tasks: tareas/estado.yml
+
+    - name: Frenar si no esta la regla final de input del TP3
+      ansible.builtin.assert:
+        that: defensa_pos_final | int >= 0
+        fail_msg: >-
+          No esta la regla "{{ defensa_comentario_final }}" del TP3. Sin ella la deteccion no tiene
+          donde ir (tiene que quedar antes) y el EDGE no descarta lo no permitido. No se toco nada.
+        quiet: true
+
+    - name: Mostrar que se va a cambiar
+      ansible.builtin.debug:
+        msg:
+          - "confianza, agregar: {{ defensa_confianza_faltan | map(attribute='address') | list }}"
+          - "confianza, quitar: {{ defensa_confianza_sobran }}"
+          - "deteccion: {{ 'rehacer (' ~ (defensa_difiere_deteccion | join(', ') or 'fuera de lugar') ~ ')' if defensa_rehacer_deteccion | bool else 'ok' }}"
+          - "bloqueo: {{ 'rehacer (' ~ (defensa_difiere_bloqueo | join(', ')) ~ ')' if defensa_rehacer_bloqueo | bool else 'ok' }}"
+
+    # 1. Lista de confianza primero: cuando la deteccion empiece a mirar, los ISP y la gestion ya estan excluidos
+    - name: Agregar a confianza lo que falta
+      community.routeros.command:
+        commands:
+          - /ip firewall address-list add list=confianza address={{ item.address }} comment="{{ item.comment }}"
+      loop: "{{ defensa_confianza_faltan }}"
+      loop_control:
+        label: "{{ item.address }}"
+      changed_when: true
+      when: not ansible_check_mode
+
+    - name: Sacar de confianza lo que no corresponde
+      community.routeros.command:
+        commands:
+          - /ip firewall address-list remove [find where list=confianza and address={{ item }} and dynamic=no]
+      loop: "{{ defensa_confianza_sobran }}"
+      changed_when: true
+      when: not ansible_check_mode
+
+    # 2. Bloqueo en raw, arriba de todo (antes del seguimiento de conexiones)
+    - name: Rehacer la regla de bloqueo en raw
+      community.routeros.command:
+        commands:
+          - /ip firewall raw remove [find where comment="{{ defensa_comentario_bloqueo }}"]
+          - >-
+            :local p ""; :if ([:len [/ip firewall raw find]] > 0) do={ :set p [:pick [/ip firewall raw find] 0] };
+            :if ($p = "") do={
+            /ip firewall raw add chain=prerouting src-address-list=bloqueados action=drop
+            comment="{{ defensa_comentario_bloqueo }}" } else={
+            /ip firewall raw add chain=prerouting src-address-list=bloqueados action=drop
+            comment="{{ defensa_comentario_bloqueo }}" place-before=$p }
+      changed_when: true
+      when: defensa_rehacer_bloqueo | bool and not ansible_check_mode
+
+    # 3. Deteccion en input, justo antes de "input: todo lo demas"
+    - name: Rehacer la regla de deteccion
+      community.routeros.command:
+        commands:
+          - /ip firewall filter remove [find where comment="{{ defensa_comentario_deteccion }}"]
+          - >-
+            /ip firewall filter add chain=input protocol=tcp psd={{ defensa_psd }}
+            src-address-list=!confianza action=add-src-to-address-list address-list=bloqueados
+            address-list-timeout={{ defensa_timeout }} log=yes log-prefix="{{ defensa_log_prefix }}"
+            comment="{{ defensa_comentario_deteccion }}"
+            place-before=[find where comment="{{ defensa_comentario_final }}"]
+      changed_when: true
+      when: defensa_rehacer_deteccion | bool and not ansible_check_mode
+
+    # 4. Verificacion: se vuelve a leer el EDGE y todo tiene que dar ok
+    - name: Verificar
+      when: not ansible_check_mode
+      block:
+        - name: Volver a leer el estado
+          ansible.builtin.include_tasks: tareas/estado.yml
+
+        - name: Comprobar que la defensa quedo como se pidio
+          ansible.builtin.assert:
+            that:
+              - not defensa_rehacer_deteccion | bool
+              - not defensa_rehacer_bloqueo | bool
+              - defensa_confianza_faltan | length == 0
+              - defensa_confianza_sobran | length == 0
+            fail_msg: >-
+              La defensa no quedo bien. Deteccion: {{ defensa_difiere_deteccion }}
+              (posicion {{ defensa_pos_deteccion }}, final {{ defensa_pos_final }}).
+              Bloqueo: {{ defensa_difiere_bloqueo }}. Confianza: faltan {{ defensa_confianza_faltan }},
+              sobran {{ defensa_confianza_sobran }}.
+            success_msg: Defensa aplicada y verificada
+
+        - name: Leer las sesiones BGP (no tienen que cambiar)
+          community.routeros.command:
+            commands:
+              - /routing bgp session print terse
+          register: defensa_bgp
+          changed_when: false
+
+        - name: Mostrar las sesiones BGP
+          ansible.builtin.debug:
+            var: defensa_bgp.stdout_lines[0]

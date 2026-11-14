@@ -1,0 +1,84 @@
+# Lee del EDGE como esta la defensa y deja el resultado en hechos "defensa_*".
+# Lo usan defensa.yml (antes de cambiar y para verificar despues) y defensa-quitar.yml no lo necesita.
+# Solo lee: nunca cambia nada, ni siquiera en --check.
+
+- name: Leer las reglas de la defensa en el EDGE
+  community.routeros.command:
+    commands:
+      # 0: posicion de la deteccion y de la regla final dentro de la cadena input
+      - >-
+        :local i 0; :local d -1; :local f -1; :local n 0;
+        :foreach r in=[/ip firewall filter find where chain=input] do={
+        :local c [/ip firewall filter get $r comment];
+        :if ($c = "{{ defensa_comentario_deteccion }}") do={ :set d $i; :set n ($n + 1) };
+        :if ($c = "{{ defensa_comentario_final }}") do={ :set f $i };
+        :set i ($i + 1) };
+        :put "deteccion=$n pos_deteccion=$d pos_final=$f"
+      # 1: la regla de deteccion tal como esta (solo las habilitadas)
+      - /ip firewall filter print terse where comment="{{ defensa_comentario_deteccion }}" and disabled=no
+      # 2: la regla de bloqueo en raw
+      - /ip firewall raw print terse where comment="{{ defensa_comentario_bloqueo }}" and disabled=no
+      # 3: las direcciones de la lista confianza (las estaticas)
+      - >-
+        :foreach e in=[/ip firewall address-list find where list=confianza and dynamic=no] do={
+        :put ("confianza=" . [/ip firewall address-list get $e address]) }
+  register: defensa_lectura
+  changed_when: false
+  check_mode: false
+
+- name: Interpretar lo que devolvio el EDGE
+  ansible.builtin.set_fact:
+    defensa_posiciones: >-
+      {{ defensa_lectura.stdout[0]
+         | regex_search('deteccion=(\d+) pos_deteccion=(-?\d+) pos_final=(-?\d+)', '\1', '\2', '\3') }}
+    defensa_lineas_deteccion: >-
+      {{ defensa_lectura.stdout[1].splitlines() | select('match', '^\s*\d+\s') | list }}
+    defensa_lineas_bloqueo: >-
+      {{ defensa_lectura.stdout[2].splitlines() | select('match', '^\s*\d+\s') | list }}
+    defensa_confianza_actual: >-
+      {{ defensa_lectura.stdout[3] | regex_findall('confianza=(\S+)') }}
+
+- name: Frenar si la salida del EDGE no tiene el formato esperado
+  ansible.builtin.assert:
+    that: defensa_posiciones is not none and defensa_posiciones | length == 3
+    fail_msg: "No se pudo leer la cadena input del EDGE. Salida: {{ defensa_lectura.stdout[0] }}"
+    quiet: true
+
+- name: Calcular que le falta a cada pieza
+  vars:
+    tokens_deteccion:
+      - chain=input
+      - action=add-src-to-address-list
+      - protocol=tcp
+      - "psd={{ defensa_psd }}"
+      - src-address-list=!confianza
+      - address-list=bloqueados
+      - "address-list-timeout={{ defensa_timeout }}"
+      - log=yes
+      - "log-prefix={{ defensa_log_prefix }}"
+    tokens_bloqueo:
+      - chain=prerouting
+      - action=drop
+      - src-address-list=bloqueados
+    deseadas: "{{ defensa_confianza | map(attribute='address') | list }}"
+  ansible.builtin.set_fact:
+    defensa_n_deteccion: "{{ defensa_posiciones[0] | int }}"
+    defensa_pos_deteccion: "{{ defensa_posiciones[1] | int }}"
+    defensa_pos_final: "{{ defensa_posiciones[2] | int }}"
+    # Lo que no coincide de cada regla (vacio = esta bien)
+    defensa_difiere_deteccion: >-
+      {{ tokens_deteccion | reject('in', defensa_lineas_deteccion | join(' ')) | list
+         if defensa_lineas_deteccion | length == 1 else ['la regla no esta o esta repetida'] }}
+    defensa_difiere_bloqueo: >-
+      {{ tokens_bloqueo | reject('in', defensa_lineas_bloqueo | join(' ')) | list
+         if defensa_lineas_bloqueo | length == 1 else ['la regla no esta o esta repetida'] }}
+    defensa_confianza_faltan: "{{ defensa_confianza | rejectattr('address', 'in', defensa_confianza_actual) | list }}"
+    defensa_confianza_sobran: "{{ defensa_confianza_actual | reject('in', deseadas) | list }}"
+
+- name: Decidir que hay que rehacer
+  ansible.builtin.set_fact:
+    defensa_rehacer_deteccion: >-
+      {{ (defensa_difiere_deteccion | length > 0)
+         or (defensa_n_deteccion | int != 1)
+         or (defensa_pos_deteccion | int > defensa_pos_final | int) }}
+    defensa_rehacer_bloqueo: "{{ defensa_difiere_bloqueo | length > 0 }}"
