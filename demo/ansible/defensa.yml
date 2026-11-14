@@ -45,7 +45,7 @@
     - name: Sacar de confianza lo que no corresponde
       community.routeros.command:
         commands:
-          - /ip firewall address-list remove [find where list=confianza and address={{ item }} and dynamic=no]
+          - /ip firewall address-list remove [find where list=confianza and address={{ item }} and !dynamic]
       loop: "{{ defensa_confianza_sobran }}"
       changed_when: true
       when: not ansible_check_mode
