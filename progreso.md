@@ -29,6 +29,7 @@
 | 12/11/2026 | **H2 Conectividad:** estación como VM Ubuntu + Docker conectada a SW-SERVERS por túnel UDP; un container le hace ping al EDGE (5/5). Runbook en [`demo/runbooks/preparar-estacion.md`](demo/runbooks/preparar-estacion.md) | Santiago | ver `git log` |
 | 14/11/2026 | **H3 Tablero:** usuario de solo lectura y API-SSL en los 5 routers; stack Prometheus + mktxp + blackbox + Grafana en la estación; tablero «Sistema Inmune» y 4 alertas, probadas con cortes en GNS3 (enlace, ISP-1, ISP-2). Tiempo de recuperación ante corte del enlace EDGE–CORE-1: ~1 s | Juan Bautista | ver `git log` |
 | 14/11/2026 | **H4 Atacante:** INTRUSO como container (Alpine + nmap) de la estación, unido a ISP-1 por un segundo túnel UDP (nube `INTRUSO`); ISP-1 anuncia `203.0.113.8/30` por BGP. Ping y *traceroute* al EDGE por ISP-1; nmap a 100 puertos en 11 s, todos `filtered`; sin llegada a las LAN. Runbook en [`demo/runbooks/intruso.md`](demo/runbooks/intruso.md) | Tomás | ver `git log` |
+| 14/11/2026 | **H5 Defensa (pruebas, parte de Tomás):** con las reglas de detección (`psd`) y bloqueo (`raw`) en el EDGE de su laboratorio, pruebas desde el INTRUSO y script de medición. Neutralización < 0,2 s (tres corridas); bloqueo de ~2 min; el escaneo de un puerto cada 4 s no se detecta (D-18); la estación y BGP no se ven afectados. Falta la corrida completa en la laptop de Santiago. Runbook en [`demo/runbooks/defensa.md`](demo/runbooks/defensa.md) | Tomás | ver `git log` |
 
 ## 🚧 Pendientes / decisiones
 
