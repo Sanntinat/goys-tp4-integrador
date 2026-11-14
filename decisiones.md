@@ -21,6 +21,8 @@
 | [D-13](#d-13) | 14/11 | La API-SSL usa un certificado firmado por una CA local de cada router | Juan Bautista | Vigente |
 | [D-14](#d-14) | 14/11 | mktxp fijado en 1.2.20 y limitado a interfaces, firewall y BGP | Juan Bautista | Vigente |
 | [D-15](#d-15) | 14/11 | La caída de un proveedor se detecta por el ping, no por BGP | Juan Bautista | Vigente |
+| [D-16](#d-16) | 14/11 | El INTRUSO es un container de la estación unido a ISP-1 por un segundo túnel UDP | Tomás | Vigente (cambia la propuesta) |
+| [D-17](#d-17) | 14/11 | GNS3 usa el rango UDP 20000–30000 para sus enlaces | Tomás | Vigente |
 
 ---
 
@@ -181,3 +183,33 @@
 - **Decisión:** se mantienen las dos alertas. `DestinoInalcanzable` es la que avisa la falla; `SesionBGPCaida` confirma después el estado del enrutamiento. No se acortan los *timers* de BGP del TP3 (D-01).
 - **Consecuencia:** en la demo, para mostrar `SesionBGPCaida` hay que esperar unos 3 minutos con el proveedor apagado. Es un buen ejemplo de por qué se combina el monitoreo de caja negra con el interno (propuesta §3.3).
 - **Evidencia:** `capturas/H3/H3-06` y `H3-08`.
+
+<a id="d-16"></a>
+## D-16 — El INTRUSO es un container de la estación unido a ISP-1 por un segundo túnel UDP
+
+- **Contexto:** la propuesta pone al INTRUSO como «un Linux con nmap del lado de ISP-1». GNS3 corre sin la GNS3 VM (D-05), así que no admite containers dentro de la topología, y una VM aparte suma RAM sobre una laptop de 7,4 GB.
+- **Decisión:**
+  - La estación suma una **placa 3** (`enp0s9`): un túnel UDP (`127.0.0.1`, puerto local `45003` → `45002`) hacia una nube `INTRUSO` de GNS3, cableada a `ISP-1 Ethernet1` (`ether2`). Es el mismo mecanismo que la placa de la estación (D-06), en promiscuo para que lleguen las tramas dirigidas al container.
+  - La estación no usa esa placa: la deja levantada y sin IP ([`61-intruso.yaml`](demo/intruso/61-intruso.yaml)).
+  - El INTRUSO es un container `goys/intruso:1` (Alpine 3.20 + nmap 7.95, [`Dockerfile`](demo/intruso/Dockerfile)) en una red Docker *macvlan* sobre `enp0s9`, con IP `203.0.113.10/30` y gateway ISP-1 (`203.0.113.9`). Tiene su propia MAC y su propio *network namespace*: para la red es un equipo más en «Internet».
+  - ISP-1 recibe `203.0.113.9/30` en `ether2` y anuncia `203.0.113.8/30` por BGP ([`H4-intruso.rsc`](demo/routers/H4-intruso.rsc)).
+- **Alternativas descartadas:**
+  - **VM Linux aparte en VirtualBox:** suma otra VM y RAM.
+  - **Appliance QEMU dentro de GNS3:** para instalarle nmap hace falta darle Internet, y el nodo NAT de GNS3 en Windows exige la GNS3 VM.
+  - **Octavo router MikroTik con un script que pruebe puertos:** no es un escaneo real y la demo pierde claridad.
+- **Consecuencias:**
+  - No suma RAM: la imagen ocupa 33 MB y el container vive lo que dura cada prueba.
+  - El INTRUSO y el monitoreo comparten la VM pero no la red: desde el INTRUSO no hay llegada a las LAN ni a la estación (lo frena el firewall del EDGE del TP3).
+  - El INTRUSO tiene red solo con GNS3 abierto y la nube `INTRUSO` cableada, igual que la estación.
+- **Evidencia:** [runbook H4](demo/runbooks/intruso.md) y `capturas/H4/`.
+
+<a id="d-17"></a>
+## D-17 — GNS3 usa el rango UDP 20000–30000 para sus enlaces
+
+- **Contexto:** al replicar el laboratorio en la PC de Tomás, la estación no recibía nada por `enp0s3`. GNS3 le había asignado al cable `ESTACION`–`SW-SERVERS` el puerto UDP `10030`, que el servicio `nvcontainer` de la app de NVIDIA tiene tomado en `127.0.0.1:10030`. Como esa es una asignación más específica que la de GNS3 (`0.0.0.0:10030`), Windows le entregaba a NVIDIA el tráfico que el switch le mandaba a la nube.
+- **Decisión:** en `%APPDATA%\GNS3\2.2\gns3_server.ini`, `udp_start_port_range = 20000` y `udp_end_port_range = 30000` (por defecto: 10000–20000). Se cambia con GNS3 cerrado, porque lo reescribe al salir.
+- **Alternativa descartada:** cerrar o reconfigurar el servicio de NVIDIA: toca el sistema y el problema vuelve con cada actualización.
+- **Consecuencias:**
+  - Vale para cualquier PC con la app de NVIDIA. Síntoma: la estación no llega a `10.20.0.1` y `Get-NetUDPEndpoint` muestra `nvcontainer` en un puerto del rango de GNS3.
+  - El cambio es por PC y no viaja con el proyecto. En la laptop de la demo hay que revisarlo antes de la feria.
+- **Evidencia:** [runbook H4, problemas conocidos](demo/runbooks/intruso.md#problemas-conocidos).

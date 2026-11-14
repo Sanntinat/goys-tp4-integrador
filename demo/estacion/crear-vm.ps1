@@ -4,6 +4,8 @@
 # Placa 1: tunel UDP hacia la nube ESTACION de GNS3 (puertos 45001 -> 45000), cableada a SW-SERVERS.
 # Placa 2: NAT de VirtualBox, para Internet y para entrar desde Windows:
 #          SSH 127.0.0.1:2222, Grafana 127.0.0.1:3000, Prometheus 127.0.0.1:9090.
+# Placa 3: tunel UDP hacia la nube INTRUSO de GNS3 (puertos 45003 -> 45002), cableada a ISP-1 e1 (H4).
+#          Si la VM ya existia antes de H4, usar agregar-placa-intruso.ps1.
 param(
   [Parameter(Mandatory = $true)] [string] $Iso,
   [string] $Nombre = "ESTACION-TP4",
@@ -23,6 +25,9 @@ $vdi = Join-Path $Carpeta "$Nombre\$Nombre.vdi"
   --natpf2 "grafana,tcp,127.0.0.1,3000,,3000" `
   --natpf2 "prometheus,tcp,127.0.0.1,9090,,9090"
 & $vbm modifyvm $Nombre --nicproperty1 dest=127.0.0.1 --nicproperty1 sport=45001 --nicproperty1 dport=45000
+& $vbm modifyvm $Nombre --nic3 generic --nictype3 82540EM --nicgenericdrv3 UDPTunnel `
+  --cableconnected3 on --nicpromisc3 allow-all
+& $vbm modifyvm $Nombre --nicproperty3 dest=127.0.0.1 --nicproperty3 sport=45003 --nicproperty3 dport=45002
 & $vbm createmedium disk --filename $vdi --size 20480 --format VDI
 & $vbm storagectl $Nombre --name SATA --add sata --controller IntelAhci --portcount 2
 & $vbm storageattach $Nombre --storagectl SATA --port 0 --device 0 --type hdd --medium $vdi

@@ -1,0 +1,11 @@
+# Placa del INTRUSO en la estacion (enp0s9 = adaptador 3 de VirtualBox, tunel UDP a la
+# nube INTRUSO de GNS3, cableada a ISP-1 e1). La estacion NO usa esta placa: solo la deja
+# levantada y sin IP para que el container INTRUSO se cuelgue de ella (red Docker macvlan).
+network:
+  version: 2
+  ethernets:
+    enp0s9:
+      dhcp4: false
+      dhcp6: false
+      link-local: []
+      optional: true            # sin GNS3 abierto no demora el arranque
