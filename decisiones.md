@@ -24,6 +24,7 @@
 | [D-16](#d-16) | 14/11 | El INTRUSO es un container de la estación unido a ISP-1 por un segundo túnel UDP | Tomás | Vigente (cambia la propuesta) |
 | [D-17](#d-17) | 14/11 | GNS3 usa el rango UDP 20000–30000 para sus enlaces | Tomás | Vigente |
 | [D-18](#d-18) | 14/11 | En `psd`, los 3 s son la pausa máxima entre intentos, no una ventana | Tomás | Vigente (corrige la propuesta) |
+| [D-19](#d-19) | 14/11 | Ansible entra al EDGE por SSH con `admin` y lee antes de escribir, en vez de usar la API | Lautaro | Vigente |
 
 ---
 
@@ -225,3 +226,21 @@
   - La defensa detecta cualquier escaneo con pausas menores a 3 s, rápido o lento: el de la demo, en menos de 0,2 s; uno de un puerto por segundo, a los 20 s.
   - Se le escapa un escaneo con pausas mayores a 3 s: uno de un puerto cada 4 s revisó 15 puertos en 64 s sin bloqueo. Ese es el límite que hay que declarar (propuesta §10).
 - **Evidencia:** [runbook H5](demo/runbooks/defensa.md), pruebas 3 y 4; `capturas/H5/H5-05`.
+
+<a id="d-19"></a>
+## D-19 — Ansible entra al EDGE por SSH con `admin` y lee antes de escribir, en vez de usar la API
+
+- **Contexto:** la propuesta (§7.2) pide un `defensa.yml` idempotente y un `defensa-quitar.yml` que deje el EDGE como estaba. La colección `community.routeros` ofrece dos caminos: módulos por API (`api_modify`, que ya es idempotente) o el módulo `command` por SSH, que solo manda órdenes y siempre informa «changed».
+- **Decisión:**
+  - **SSH con el módulo `command`.** Cada playbook primero lee el EDGE (posición de la detección dentro de `input`, cada regla con `print terse`, las direcciones de `confianza`) y después manda solo las órdenes que faltan, con `changed_when` puesto a mano. Una regla que está pero difiere se borra y se vuelve a crear en su lugar.
+  - **Usuario `admin`,** el único con permiso de escritura desde el TP3. La clave va en `group_vars/edge/vault.yml`, cifrado con Ansible Vault y además fuera de Git.
+  - **`host_key_checking` activo:** la llave del EDGE se acepta una vez a mano comparando la huella.
+  - **Ansible del paquete de Ubuntu 24.04** (`ansible` 9, `ansible-core` 2.16), que trae las colecciones: la estación no necesita Internet en la demo.
+- **Alternativas descartadas:**
+  - **`api_modify` por API-SSL:** habría que darle escritura a un usuario por la API, que hoy solo usa `prometheus` en modo lectura (H3), y el orden de las reglas de `filter` obliga a manejar la cadena entera.
+  - **Mandar el `.rsc` de H5 tal cual:** funciona, pero siempre rehace todo y no se puede mostrar la idempotencia.
+  - **Un usuario `ansible` aparte:** suma otra clave para un único equipo; queda como mejora.
+- **Consecuencias:**
+  - La comparación de parámetros depende de cómo RouterOS 7.21 los imprime en `print terse`. Si alguno no coincide, el playbook rehace la regla en cada corrida (no rompe nada, pero `changed` no llega a 0). Se verifica en la prueba 2 del runbook.
+  - `defensa-quitar.yml` también vacía `bloqueados`, así la demo se reinicia sin esperar los 2 minutos.
+- **Evidencia:** [runbook H6](demo/runbooks/automatizacion.md).
