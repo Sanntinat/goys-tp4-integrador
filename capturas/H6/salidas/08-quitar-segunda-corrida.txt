@@ -1,0 +1,40 @@
+$ ansible-playbook defensa-quitar.yml -e ansible_host=127.0.0.1 -e ansible_port=2222 --vault-password-file <archivo>
+
+PLAY [Quitar la defensa del EDGE] **********************************************
+
+TASK [Contar lo que queda de la defensa] ***************************************
+[WARNING]: ansible-pylibssh not installed, falling back to paramiko
+ok: [EDGE]
+
+TASK [Interpretar la cuenta] ***************************************************
+ok: [EDGE]
+
+TASK [Frenar si la salida del EDGE no tiene el formato esperado] ***************
+ok: [EDGE]
+
+TASK [Mostrar que se va a borrar] **********************************************
+ok: [EDGE] => 
+    quitar_cuenta:
+        bloqueados: '0'
+        confianza: '0'
+        filter: '0'
+        raw: '0'
+
+TASK [Borrar la regla de deteccion] ********************************************
+skipping: [EDGE]
+
+TASK [Borrar la regla de bloqueo en raw] ***************************************
+skipping: [EDGE]
+
+TASK [Borrar la lista confianza] ***********************************************
+skipping: [EDGE]
+
+TASK [Vaciar la lista bloqueados (desbloquea al INTRUSO)] **********************
+skipping: [EDGE]
+
+TASK [Verificar que no quedo nada] *********************************************
+ok: [EDGE]
+
+PLAY RECAP *********************************************************************
+EDGE                       : ok=5    changed=0    unreachable=0    failed=0    skipped=4    rescued=0    ignored=0   
+

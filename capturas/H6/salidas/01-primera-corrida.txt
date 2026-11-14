@@ -1,0 +1,79 @@
+$ ansible-playbook defensa.yml -e ansible_host=127.0.0.1 -e ansible_port=2222 --vault-password-file <archivo>
+
+PLAY [Defensa activa en el EDGE] ***********************************************
+
+TASK [Leer las reglas de la defensa en el EDGE] ********************************
+[WARNING]: ansible-pylibssh not installed, falling back to paramiko
+ok: [EDGE]
+
+TASK [Interpretar lo que devolvio el EDGE] *************************************
+ok: [EDGE]
+
+TASK [Frenar si la salida del EDGE no tiene el formato esperado] ***************
+ok: [EDGE]
+
+TASK [Calcular que le falta a cada pieza] **************************************
+ok: [EDGE]
+
+TASK [Decidir que hay que rehacer] *********************************************
+ok: [EDGE]
+
+TASK [Frenar si no esta la regla final de input del TP3] ***********************
+ok: [EDGE]
+
+TASK [Mostrar que se va a cambiar] *********************************************
+ok: [EDGE] => 
+    msg:
+    - 'confianza, agregar: [''203.0.113.1'', ''203.0.113.5'', ''10.20.0.0/24'']'
+    - 'confianza, quitar: []'
+    - 'deteccion: rehacer (la regla no esta o esta repetida)'
+    - 'bloqueo: rehacer (la regla no esta o esta repetida)'
+
+TASK [Agregar a confianza lo que falta] ****************************************
+changed: [EDGE] => (item=203.0.113.1)
+changed: [EDGE] => (item=203.0.113.5)
+changed: [EDGE] => (item=10.20.0.0/24)
+
+TASK [Sacar de confianza lo que no corresponde] ********************************
+skipping: [EDGE]
+
+TASK [Rehacer la regla de bloqueo en raw] **************************************
+changed: [EDGE]
+
+TASK [Rehacer la regla de deteccion] *******************************************
+changed: [EDGE]
+
+TASK [Volver a leer el estado] *************************************************
+included: demo/ansible/tareas/estado.yml for EDGE
+
+TASK [Leer las reglas de la defensa en el EDGE] ********************************
+ok: [EDGE]
+
+TASK [Interpretar lo que devolvio el EDGE] *************************************
+ok: [EDGE]
+
+TASK [Frenar si la salida del EDGE no tiene el formato esperado] ***************
+ok: [EDGE]
+
+TASK [Calcular que le falta a cada pieza] **************************************
+ok: [EDGE]
+
+TASK [Decidir que hay que rehacer] *********************************************
+ok: [EDGE]
+
+TASK [Comprobar que la defensa quedo como se pidio] ****************************
+ok: [EDGE] => 
+    changed: false
+    msg: Defensa aplicada y verificada
+
+TASK [Leer las sesiones BGP (no tienen que cambiar)] ***************************
+ok: [EDGE]
+
+TASK [Mostrar las sesiones BGP] ************************************************
+ok: [EDGE] => 
+    defensa_bgp.stdout_lines[0]:
+    - ''
+
+PLAY RECAP *********************************************************************
+EDGE                       : ok=19   changed=3    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
+
