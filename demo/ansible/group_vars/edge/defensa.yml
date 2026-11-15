@@ -1,0 +1,23 @@
+# H6: estado deseado de la defensa en el EDGE. Los valores son los de H5 (demo/routers/H5-defensa.rsc).
+# En confianza entra solo la estacion, no toda la LAN SERVERS (decisiones.md, D-19).
+# No cambiar los nombres "bloqueados" ni "defensa: ...": los usan mktxp y la alerta IntrusoBloqueado (H3)
+# y el script de medicion (H5).
+
+defensa_confianza:
+  - address: 203.0.113.1
+    comment: "ISP-1 (vecino BGP)"
+  - address: 203.0.113.5
+    comment: "ISP-2 (vecino BGP)"
+  - address: 10.20.0.101
+    comment: "estacion (Prometheus, Ansible)"
+
+# psd=peso,pausa maxima,peso puerto bajo,peso puerto alto (ver decisiones.md, D-18)
+defensa_psd: "21,3s,3,1"
+defensa_timeout: 2m
+defensa_log_prefix: H5-bloqueo
+
+# Comentarios con los que se reconoce cada regla. defensa-quitar.yml borra todo lo que empiece con "defensa:".
+defensa_comentario_deteccion: "defensa: detecta escaneo"
+defensa_comentario_bloqueo: "defensa: descarta al origen bloqueado"
+# Regla final de input del TP3: la deteccion tiene que quedar antes
+defensa_comentario_final: "input: todo lo demas"

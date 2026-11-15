@@ -1,0 +1,60 @@
+$ (en el EDGE, a mano) /ip firewall filter move [find comment="defensa: detecta escaneo"]   # la manda al final, despues de "input: todo lo demas"
+
+$ ansible-playbook defensa.yml --check -e ansible_host=127.0.0.1 -e ansible_port=2222 --vault-password-file <archivo>
+
+PLAY [Defensa activa en el EDGE] ***********************************************
+
+TASK [Leer las reglas de la defensa en el EDGE] ********************************
+[WARNING]: ansible-pylibssh not installed, falling back to paramiko
+ok: [EDGE]
+
+TASK [Interpretar lo que devolvio el EDGE] *************************************
+ok: [EDGE]
+
+TASK [Frenar si la salida del EDGE no tiene el formato esperado] ***************
+ok: [EDGE]
+
+TASK [Calcular que le falta a cada pieza] **************************************
+ok: [EDGE]
+
+TASK [Decidir que hay que rehacer] *********************************************
+ok: [EDGE]
+
+TASK [Frenar si no esta la regla final de input del TP3] ***********************
+ok: [EDGE]
+
+TASK [Mostrar que se va a cambiar] *********************************************
+ok: [EDGE] => 
+    msg:
+    - 'confianza, agregar: []'
+    - 'confianza, quitar: []'
+    - 'deteccion: rehacer (fuera de lugar)'
+    - 'bloqueo: ok'
+
+TASK [Agregar a confianza lo que falta] ****************************************
+skipping: [EDGE]
+
+TASK [Sacar de confianza lo que no corresponde] ********************************
+skipping: [EDGE]
+
+TASK [Rehacer la regla de bloqueo en raw] **************************************
+skipping: [EDGE]
+
+TASK [Rehacer la regla de deteccion] *******************************************
+skipping: [EDGE]
+
+TASK [Volver a leer el estado] *************************************************
+skipping: [EDGE]
+
+TASK [Comprobar que la defensa quedo como se pidio] ****************************
+skipping: [EDGE]
+
+TASK [Leer las sesiones BGP (no tienen que cambiar)] ***************************
+skipping: [EDGE]
+
+TASK [Mostrar las sesiones BGP] ************************************************
+skipping: [EDGE]
+
+PLAY RECAP *********************************************************************
+EDGE                       : ok=7    changed=0    unreachable=0    failed=0    skipped=8    rescued=0    ignored=0   
+

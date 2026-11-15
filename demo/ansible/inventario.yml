@@ -1,0 +1,16 @@
+# H6: el unico equipo que toca la automatizacion es el EDGE (la defensa vive solo ahi).
+# Se entra por SSH al loopback desde la estacion (10.20.0.101), que esta en la lista "gestion" del TP3.
+all:
+  children:
+    edge:
+      hosts:
+        EDGE:
+          ansible_host: 10.255.255.1
+      vars:
+        ansible_connection: ansible.netcommon.network_cli
+        ansible_network_os: community.routeros.routeros
+        # "+cet1024w": sin colores, sin deteccion de terminal y 1024 columnas.
+        # Lo pide la coleccion community.routeros para que la salida no venga cortada ni con escapes.
+        ansible_user: admin+cet1024w
+        # La clave sale de group_vars/edge/vault.yml (cifrado, fuera de Git)
+        ansible_password: "{{ vault_clave_admin }}"

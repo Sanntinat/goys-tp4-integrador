@@ -24,3 +24,6 @@ credentials*
 
 # H3: el mktxp.conf real lleva la clave del usuario prometheus
 demo/mktxp/mktxp.conf
+
+# H6: el vault con la clave de admin del EDGE (aunque va cifrado, no se sube)
+demo/ansible/group_vars/edge/vault.yml

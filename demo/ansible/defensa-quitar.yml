@@ -1,0 +1,81 @@
+# H6: deja el EDGE como estaba antes de la defensa. Es la vuelta atras de defensa.yml
+# y el reinicio de la demo entre visitantes.
+#
+#   ansible-playbook defensa-quitar.yml --ask-vault-pass
+#
+# Borra la deteccion, el bloqueo en raw, la lista confianza y tambien la lista bloqueados,
+# asi el INTRUSO puede volver a escanear sin esperar los 2 minutos.
+# Idempotente: si no queda nada de la defensa, termina con changed=0.
+
+- name: Quitar la defensa del EDGE
+  hosts: edge
+  gather_facts: false
+
+  tasks:
+    - name: Contar lo que queda de la defensa
+      community.routeros.command:
+        commands:
+          - >-
+            :put ("filter=" . [:len [/ip firewall filter find where comment~"^defensa:"]]
+            . " raw=" . [:len [/ip firewall raw find where comment~"^defensa:"]]
+            . " confianza=" . [:len [/ip firewall address-list find where list=confianza]]
+            . " bloqueados=" . [:len [/ip firewall address-list find where list=bloqueados]])
+      register: quitar_lectura
+      changed_when: false
+      check_mode: false
+
+    - name: Interpretar la cuenta
+      ansible.builtin.set_fact:
+        quitar_cuenta: >-
+          {{ dict(quitar_lectura.stdout[0] | regex_findall('(\w+)=(\d+)')) }}
+
+    - name: Frenar si la salida del EDGE no tiene el formato esperado
+      ansible.builtin.assert:
+        that: quitar_cuenta | length == 4
+        fail_msg: "No se pudo leer el EDGE. Salida: {{ quitar_lectura.stdout[0] }}"
+        quiet: true
+
+    - name: Mostrar que se va a borrar
+      ansible.builtin.debug:
+        var: quitar_cuenta
+
+    # Primero la deteccion, para que no siga agregando a bloqueados mientras se limpia
+    - name: Borrar la regla de deteccion
+      community.routeros.command:
+        commands:
+          - /ip firewall filter remove [find where comment~"^defensa:"]
+      changed_when: true
+      when: quitar_cuenta.filter | int > 0 and not ansible_check_mode
+
+    - name: Borrar la regla de bloqueo en raw
+      community.routeros.command:
+        commands:
+          - /ip firewall raw remove [find where comment~"^defensa:"]
+      changed_when: true
+      when: quitar_cuenta.raw | int > 0 and not ansible_check_mode
+
+    - name: Borrar la lista confianza
+      community.routeros.command:
+        commands:
+          - /ip firewall address-list remove [find where list=confianza]
+      changed_when: true
+      when: quitar_cuenta.confianza | int > 0 and not ansible_check_mode
+
+    - name: Vaciar la lista bloqueados (desbloquea al INTRUSO)
+      community.routeros.command:
+        commands:
+          - /ip firewall address-list remove [find where list=bloqueados]
+      changed_when: true
+      when: quitar_cuenta.bloqueados | int > 0 and not ansible_check_mode
+
+    - name: Verificar que no quedo nada
+      community.routeros.command:
+        commands:
+          - >-
+            :put ([:len [/ip firewall filter find where comment~"^defensa:"]]
+            + [:len [/ip firewall raw find where comment~"^defensa:"]]
+            + [:len [/ip firewall address-list find where list=confianza]])
+      register: quitar_verificacion
+      changed_when: false
+      failed_when: quitar_verificacion.stdout[0] | trim != "0"
+      when: not ansible_check_mode
