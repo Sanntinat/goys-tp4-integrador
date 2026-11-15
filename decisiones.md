@@ -8,7 +8,7 @@
 |---|---|---|---|---|
 | [D-01](#d-01) | 07/11 | La red del TP3 se reutiliza sin cambios de diseño | Grupo | Vigente |
 | [D-02](#d-02) | 07/11 | Detección de escaneos con `psd` de RouterOS y bloqueo en `raw` | Grupo | Vigente |
-| [D-03](#d-03) | 07/11 | La regla de detección va antes del drop final y la red de gestión entra en `confianza` | Tomás | Vigente |
+| [D-03](#d-03) | 07/11 | La regla de detección va antes del drop final y la red de gestión entra en `confianza` | Tomás | Vigente en parte (la lista `confianza` la cambia D-19) |
 | [D-04](#d-04) | 12/11 | El laboratorio del TP4 es una copia del proyecto GNS3, fuera de OneDrive | Santiago | Vigente |
 | [D-05](#d-05) | 12/11 | La estación es una VM Ubuntu en VirtualBox, no la laptop con Windows | Santiago | Vigente (cambia la propuesta) |
 | [D-06](#d-06) | 12/11 | La VM se une a GNS3 con un túnel UDP en una nube, no como nodo VirtualBox | Santiago | Vigente |
@@ -24,7 +24,8 @@
 | [D-16](#d-16) | 14/11 | El INTRUSO es un container de la estación unido a ISP-1 por un segundo túnel UDP | Tomás | Vigente (cambia la propuesta) |
 | [D-17](#d-17) | 14/11 | GNS3 usa el rango UDP 20000–30000 para sus enlaces | Tomás | Vigente |
 | [D-18](#d-18) | 14/11 | En `psd`, los 3 s son la pausa máxima entre intentos, no una ventana | Tomás | Vigente (corrige la propuesta) |
-| [D-19](#d-19) | 14/11 | Ansible entra al EDGE por SSH con `admin` y lee antes de escribir, en vez de usar la API | Lautaro | Vigente |
+| [D-19](#d-19) | 15/11 | En `confianza` entra solo la estación, no toda la LAN SERVERS | Santiago | Vigente (cambia D-03) |
+| [D-20](#d-20) | 14/11 | Ansible entra al EDGE por SSH con `admin` y lee antes de escribir, en vez de usar la API | Lautaro | Vigente |
 
 ---
 
@@ -55,7 +56,7 @@
 - **Contexto:** el `input` del EDGE (TP3) termina con «input: todo lo demas», que descarta todo lo no permitido.
 - **Decisión:**
   - La regla `psd` se ubica antes de esa regla final (`place-before`). Agregada al final, nunca vería el escaneo.
-  - La lista `confianza` incluye `10.20.0.0/24` además de los dos ISP. Así una prueba con `nmap` desde la estación no la bloquea a ella misma.
+  - La lista `confianza` incluye `10.20.0.0/24` además de los dos ISP. Así una prueba con `nmap` desde la estación no la bloquea a ella misma. **Cambiado por [D-19](#d-19):** ahora entra solo la estación.
 - **Evidencia:** commit `140bf63` (Tomás Martin).
 
 <a id="d-04"></a>
@@ -228,7 +229,19 @@
 - **Evidencia:** [runbook H5](demo/runbooks/defensa.md), pruebas 3 y 4; `capturas/H5/H5-05`.
 
 <a id="d-19"></a>
-## D-19 — Ansible entra al EDGE por SSH con `admin` y lee antes de escribir, en vez de usar la API
+## D-19 — En `confianza` entra solo la estación, no toda la LAN SERVERS
+
+- **Contexto:** D-03 metió toda la red de gestión (`10.20.0.0/24`) en `confianza`, para que un `nmap` de prueba desde la estación no la bloqueara. En la revisión de H5, Lautaro marcó que así queda fuera de la detección cualquier equipo de la LAN SERVERS: uno infectado podría escanear el EDGE y nunca terminaría en `bloqueados`.
+- **Decisión:** `confianza` = ISP-1 (`203.0.113.1`), ISP-2 (`203.0.113.5`) y la estación (`10.20.0.101`), la única de esa red que necesita estar porque Prometheus consulta el EDGE cada pocos segundos y desde ahí corren Ansible (H6) y las pruebas con `nmap` ([`H5-defensa.rsc`](demo/routers/H5-defensa.rsc)).
+- **Por qué no rompe nada:** en la demo, ningún otro equipo de `10.20.0.0/24` le habla TCP al EDGE. El SSH y el Winbox desde gestión se aceptan en una regla anterior a la detección, así que no suman puntos, y los DIST solo le hablan OSPF, por los enlaces internos.
+- **Consecuencias:**
+  - Un equipo de la LAN SERVERS que escanee el EDGE ahora sí termina bloqueado. Sigue sin verse un escaneo entre las LAN, que no pasa por el EDGE ([runbook H5, límites](demo/runbooks/defensa.md#límites-de-la-defensa)).
+  - H6 tiene que aplicar la misma lista (`group_vars/edge/defensa.yml`, Lautaro).
+  - La corrida completa del 15/11 se hizo todavía con `10.20.0.0/24`. Falta pegar el script nuevo en el EDGE y repetir el `nmap` desde la estación en el próximo encendido (H7).
+- **Evidencia:** revisión de Lautaro en el PR de H5.
+
+<a id="d-20"></a>
+## D-20 — Ansible entra al EDGE por SSH con `admin` y lee antes de escribir, en vez de usar la API
 
 - **Contexto:** la propuesta (§7.2) pide un `defensa.yml` idempotente y un `defensa-quitar.yml` que deje el EDGE como estaba. La colección `community.routeros` ofrece dos caminos: módulos por API (`api_modify`, que ya es idempotente) o el módulo `command` por SSH, que solo manda órdenes y siempre informa «changed».
 - **Decisión:**

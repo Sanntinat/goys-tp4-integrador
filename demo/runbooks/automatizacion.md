@@ -11,13 +11,13 @@
 
 Ansible corre en la estación (D-11) y entra al EDGE por SSH al loopback `10.255.255.1` con `admin`. El TP3 ya permite SSH desde `10.20.0.0/24` (lista `gestion` y `/ip service ssh`), así que no hay que tocar el firewall.
 
-Los dos playbooks usan solo el módulo `community.routeros.command` por SSH. No usan la API: la API-SSL del EDGE la tiene el usuario `prometheus`, de solo lectura, y abrirla para escritura sumaba un acceso más (D-19).
+Los dos playbooks usan solo el módulo `community.routeros.command` por SSH. No usan la API: la API-SSL del EDGE la tiene el usuario `prometheus`, de solo lectura, y abrirla para escritura sumaba un acceso más (D-20).
 
 `defensa.yml` primero lee el EDGE y después cambia solo lo que hace falta:
 
 | Pieza | Cómo se reconoce | Cuándo se rehace |
 |---|---|---|
-| Lista `confianza` | Por dirección (`203.0.113.1`, `203.0.113.5`, `10.20.0.0/24`) | Agrega las que faltan y saca las que sobran |
+| Lista `confianza` | Por dirección (`203.0.113.1`, `203.0.113.5`, `10.20.0.101`) | Agrega las que faltan y saca las que sobran |
 | Bloqueo en `raw` | Comentario «defensa: descarta al origen bloqueado» | Si no está, está repetida, deshabilitada o con otros valores. Queda primera en `raw` |
 | Detección en `input` | Comentario «defensa: detecta escaneo» | Igual que la anterior, y también si quedó después de «input: todo lo demas» |
 
@@ -93,6 +93,7 @@ Diferencias con el laboratorio, solo para esta prueba:
 - Ansible entra por un puerto redirigido (`-e ansible_host=127.0.0.1 -e ansible_port=2222`) y desde la red de QEMU (`10.0.2.0/24`), que se sumó a `gestion` para que el TP3 deje pasar el SSH.
 - `ANSIBLE_HOST_KEY_CHECKING=False` y el vault con `--vault-password-file`, porque el router se crea y se descarta en la prueba.
 - No hay ISP, BGP ni INTRUSO: las sesiones BGP salen vacías y no se puede medir la neutralización.
+- La prueba se hizo antes de D-19, con `10.20.0.0/24` en `confianza`; por eso esa dirección aparece en las salidas. El cambio a `10.20.0.101` es solo un valor de `group_vars`: si el EDGE todavía tiene la red entera, `defensa.yml` la saca y agrega la estación, como en la prueba 4.
 
 | # | Prueba | Resultado | Captura |
 |:-:|---|---|---|
