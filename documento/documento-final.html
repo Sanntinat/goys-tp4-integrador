@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Sistema Inmune: la red que se cura y se defiende sola</title>
+<style>
+  @page {
+    size: A4;
+    margin: 1.8cm 2cm 2cm;
+    @bottom-left { content: "Grupo 11 · Sistema Inmune: documento final"; font-family: Calibri, Arial, sans-serif; font-size: 8pt; color: #666; }
+    @bottom-right { content: counter(page); font-family: Calibri, Arial, sans-serif; font-size: 8pt; color: #666; }
+  }
+  * { box-sizing: border-box; }
+  body { font-family: Calibri, "Segoe UI", Arial, sans-serif; font-size: 10.5pt; line-height: 1.32; color: #1b1b1b;
+         margin: 0; text-align: justify; hyphens: auto; counter-reset: seccion tabla figura; }
+  code { font-family: Consolas, "Courier New", monospace; font-size: 9pt; }
+  p { margin: 0 0 0.16cm; }
+
+  .franja { display: flex; justify-content: space-between; font-size: 8.5pt; color: #555;
+            border-bottom: 1.5px solid #3a3f45; padding-bottom: 3px; }
+  .tipo { font-size: 9.5pt; color: #3a3f45; margin: 0.3cm 0 0.08cm; text-align: left; }
+  h1 { font-size: 21pt; line-height: 1.12; color: #2b2b2b; margin: 0 0 0.1cm; text-align: left; }
+  .subtitulo { font-style: italic; font-size: 11.5pt; color: #444; margin: 0 0 0.22cm; text-align: left; }
+  .autores { font-size: 11pt; font-weight: bold; margin: 0; text-align: left; }
+  .afiliacion { font-size: 9.5pt; color: #444; margin: 0.03cm 0 0.3cm; text-align: left; }
+  .resumen p { margin: 0 0 0.1cm; }
+  .rotulo { font-weight: bold; color: #2b2b2b; }
+
+  h2 { font-size: 12.5pt; color: #3a3f45; margin: 0.3cm 0 0.08cm; break-after: avoid;
+       counter-increment: seccion; counter-reset: subseccion; }
+  h2::before { content: counter(seccion) ". "; }
+  h2.sin-numero::before { content: none; }
+  h3 { font-size: 10.8pt; color: #2b2b2b; margin: 0.18cm 0 0.05cm; break-after: avoid; counter-increment: subseccion; }
+  h3::before { content: counter(seccion) "." counter(subseccion) " "; }
+  .etiqueta { font-weight: bold; color: #2b2b2b; }
+
+  figure { margin: 0.15cm 0 0.25cm; break-inside: avoid; }
+  figure img.unica { display: block; width: 100%; max-height: 8.2cm; object-fit: contain; }
+  .par { display: flex; gap: 0.4cm; }
+  .par div { flex: 1; text-align: center; font-size: 9pt; color: #444; }
+  .par img { width: 100%; display: block; border: 0.5px solid #999; margin-bottom: 0.05cm; }
+  figcaption { font-size: 9pt; color: #333; margin-top: 0.08cm; text-align: left; }
+  figcaption::before { counter-increment: figura; content: "Figura " counter(figura) ". "; font-weight: bold; }
+
+  .tabla { break-inside: avoid; margin: 0.1cm 0 0.24cm; }
+  .tabla .titulo { font-size: 9pt; margin-bottom: 0.05cm; text-align: left; }
+  .tabla .titulo::before { counter-increment: tabla; content: "Tabla " counter(tabla) ". "; font-weight: bold; }
+  table { width: 100%; border-collapse: collapse; font-size: 9pt; line-height: 1.22; text-align: left; }
+  th, td { border: 0.5px solid #595959; padding: 2px 5px; vertical-align: top; }
+  th { background: #e8e8e8; font-weight: bold; }
+  td.num { text-align: center; white-space: nowrap; }
+
+  ol.referencias { list-style: none; padding: 0; margin: 0.04cm 0 0; font-size: 8.8pt; line-height: 1.22;
+                   counter-reset: ref; text-align: left; columns: 2; column-gap: 0.6cm; }
+  ol.referencias li { counter-increment: ref; padding-left: 2em; text-indent: -2em; margin-bottom: 0.06cm;
+                      overflow-wrap: anywhere; break-inside: avoid; }
+  ol.referencias li::before { content: "[" counter(ref) "]"; display: inline-block; width: 2em; text-indent: 0; }
+</style>
+</head>
+<body>
+
+<div class="franja"><span>Universidad Tecnológica Nacional · Facultad Regional La Plata</span><span>Gestión Operativa y Seguridad en Redes · TP N.º 4</span></div>
+<p class="tipo">Documento final · Modalidad A: Proyecto de Desarrollo · Feria de Redes 2026</p>
+<h1>Sistema Inmune: la red que se cura y se defiende sola</h1>
+<p class="subtitulo">Failover automático y bloqueo de intrusiones sobre una red empresarial MikroTik, con Ansible y Prometheus/Grafana</p>
+<p class="autores">Lautaro Aubert · Juan Bautista Cuenca · Tomás Martin · Santiago Natalichio Bestosini</p>
+<p class="afiliacion">Grupo 11 · Ingeniería en Sistemas de Información · UTN Facultad Regional La Plata · Repositorio: github.com/Sanntinat/goys-tp4-integrador</p>
+
+<div class="resumen">
+  <p><span class="rotulo">Resumen.</span> La red empresarial del TP3, con siete routers MikroTik CHR, ya se recuperaba sola de la caída de un gateway, de un enlace o de un proveedor [1], pero nadie se enteraba de una falla mientras pasaba y el firewall no distinguía a un atacante del resto del tráfico. Le agregamos un tablero en tiempo real con alertas (Prometheus, Grafana, mktxp y blackbox exporter en Docker), una defensa en el router de borde que detecta un escaneo de puertos y bloquea al origen por sí sola, y el despliegue de esa defensa con Ansible. En el laboratorio, el corte de un enlace interno se ve en el tablero y la red vuelve en 1 a 10 s; un escaneo de puertos queda bloqueado entre 0,08 y 2,72 s después de empezar, el bloqueo dura unos 2 minutos y no afecta BGP, OSPF ni el monitoreo. La defensa no ve los escaneos que dejan más de 3 s entre intentos.</p>
+  <p><span class="rotulo">Palabras clave:</span> alta disponibilidad, monitoreo, detección de escaneos, MikroTik RouterOS, Prometheus, Ansible.</p>
+</div>
+
+<figure>
+  <img class="unica" src="../diagramas/arquitectura.svg" alt="Topología del TP3 con la estación de monitoreo, el intruso y la defensa en el EDGE">
+  <figcaption>Arquitectura. En gris, la red del TP3; en rojo, el intruso y la defensa del EDGE; en punteado oscuro, la estación, que lee las métricas por API-SSL y despliega la defensa por SSH.</figcaption>
+</figure>
+
+<h2>Introducción</h2>
+<p>En el TP3 armamos en GNS3 una red jerárquica de cinco capas con dos proveedores, routers duplicados y protocolos de redundancia, y medimos con cinco simulacros que sobrevive a fallas sin intervención [1]. Esos simulacros dejaron dos puntos ciegos. El primero es de operación: el único monitoreo escribía en el log de un router, y un reinicio de CORE-2 se notó horas después. El segundo es de seguridad: el firewall del borde aplica una política fija, que descarta lo no permitido pero no reacciona ante alguien que está tanteando la red.</p>
+<p>El objetivo fue que la red, además de recuperarse, avise y se defienda, y medirlo: cuánto tarda en recuperarse de una falla y cuánto en neutralizar un ataque. El trabajo se organizó en siete hitos (H1 a H7), cada uno con un responsable, una rama y un <em>pull request</em> revisado por otro integrante.</p>
+
+<h2>Arquitectura</h2>
+<p>La topología del TP3 se mantuvo sin cambios de diseño: eBGP con dos proveedores y TCP-MD5 [2], [3], OSPF área 0 con MD5 [4], VRRP con autenticación y un master por LAN [5], y el firewall del EDGE. Sobre ella se agregaron la estación de monitoreo, el atacante y las reglas de defensa (Figura 1 y Tabla 1).</p>
+
+
+<div class="tabla">
+  <div class="titulo">Componentes y dónde corren.</div>
+  <table>
+    <thead><tr><th>Componente</th><th>Implementación</th><th>Dónde corre</th></tr></thead>
+    <tbody>
+      <tr><td>Laboratorio</td><td>GNS3 2.2.61 y 7 MikroTik CHR (RouterOS 7.21.5)</td><td>Laptop, emulado con QEMU</td></tr>
+      <tr><td>Estación</td><td>VM Ubuntu Server 24.04 con Docker (<code>10.20.0.101</code>)</td><td>VirtualBox, unida a SW-SERVERS por un túnel UDP</td></tr>
+      <tr><td>Monitoreo</td><td>Prometheus, Grafana, mktxp 1.2.20 [6] y blackbox exporter [7], [8]</td><td>Docker Compose en la estación</td></tr>
+      <tr><td>Defensa</td><td>Detector <code>psd</code>, lista de direcciones y tabla <code>raw</code> [9]</td><td>Firewall del EDGE</td></tr>
+      <tr><td>Automatización</td><td>Ansible 9 con <code>community.routeros</code> [10]</td><td>Estación</td></tr>
+      <tr><td>Atacante</td><td>Alpine 3.20 con nmap 7.95 [11] (<code>203.0.113.10</code>)</td><td>Container en la estación, unido a ISP-1 por un segundo túnel UDP</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p><span class="etiqueta">Decisiones que cambiaron la propuesta.</span> El repositorio registra 20 decisiones con su contexto, alternativas y evidencia. Las que más pesaron fueron de plataforma. La estación iba a ser la laptop conectada a GNS3 con un nodo <em>Cloud</em>, pero en Windows 11 el tráfico que Npcap inyecta en una placa de loopback se descarta: quedó como una VM unida por un túnel UDP, el mecanismo que GNS3 usa por dentro (D-05, D-06). El atacante iba a ser otra máquina; quedó como un container de la misma VM, colgado de una tercera placa con su propio túnel hacia ISP-1, que no suma RAM (D-16). Y al replicar el laboratorio en otra PC apareció un choque de puertos: el servicio de la app de NVIDIA ocupa el UDP 10030 y se quedaba con el tráfico de un cable de GNS3, lo que se resolvió moviendo el rango de puertos de GNS3 a 20000–30000 (D-17).</p>
+
+<h2>Implementación</h2>
+<h3>Monitoreo (H3)</h3>
+<p>En los cinco routers de la empresa se creó un usuario <code>prometheus</code> con permisos de solo lectura y API, que solo puede entrar desde la estación, y se habilitó la API-SSL con un certificado firmado por una CA local de cada router (D-13). mktxp consulta cada 5 s las interfaces, los contadores del firewall, la lista de bloqueados y las sesiones BGP (D-14). El blackbox exporter hace un ping por segundo a los loopbacks de los proveedores: es la medida de lo que percibe un usuario, que complementa las métricas internas [12]. El intervalo de 1 s se eligió porque en el TP3 las fallas más cortas duraron entre 2 y 4 s. Grafana muestra ocho paneles y Prometheus evalúa las alertas de la Tabla 2.</p>
+
+<div class="tabla">
+  <div class="titulo">Alertas del tablero.</div>
+  <table>
+    <thead><tr><th>Alerta</th><th>Condición</th><th>Espera</th><th>Severidad</th></tr></thead>
+    <tbody>
+      <tr><td>DestinoInalcanzable</td><td>El ping de punta a punta a un proveedor no vuelve</td><td class="num">2 s</td><td>crítica</td></tr>
+      <tr><td>EnlaceCaido</td><td>Una placa física de los cinco routers deja de estar activa</td><td class="num">2 s</td><td>advertencia</td></tr>
+      <tr><td>SesionBGPCaida</td><td>Una sesión BGP del EDGE no está establecida</td><td class="num">5 s</td><td>crítica</td></tr>
+      <tr><td>IntrusoBloqueado</td><td>La defensa descarta tráfico o hay direcciones en la lista de bloqueados</td><td class="num">0 s</td><td>advertencia</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3>Defensa (H5)</h3>
+<p>En el EDGE se agregaron dos reglas y una lista de confianza. La detección (<code>psd=21,3s,3,1</code>) va en la cadena <code>input</code>, justo antes de la regla final del TP3 que descarta todo lo no permitido: suma 3 puntos por cada puerto bajo y 1 por cada puerto alto que intenta un mismo origen, y si llega a 21 lo agrega a la lista <code>bloqueados</code> por 2 minutos y deja una línea en el log. El bloqueo, en la tabla <code>raw</code>, descarta todo lo que llega de esa lista antes del seguimiento de conexiones, así el ataque no consume recursos del router. Los dos proveedores y la estación están en la lista de confianza, para que un falso positivo no corte BGP ni el monitoreo (D-19).</p>
+<p>Las pruebas obligaron a corregir cómo explicábamos la regla. Los 3 s no son una ventana dentro de la cual hay que probar muchos puertos, sino la pausa máxima entre un intento y el siguiente: mientras el atacante no espere más de eso, los puntos se acumulan, vaya rápido o lento (D-18).</p>
+
+<h3>Automatización (H6)</h3>
+<p><code>defensa.yml</code> entra al EDGE por SSH, lee primero cómo está (posición de la detección, cada regla y la lista de confianza) y después manda solo las órdenes que faltan, por lo que una segunda corrida no cambia nada. <code>defensa-quitar.yml</code> borra la defensa y vacía la lista de bloqueados, y es el reinicio de la demo entre visitantes. La clave de <code>admin</code> va cifrada con Ansible Vault y la huella del EDGE se verifica (D-20).</p>
+
+<h3>Gestión operativa</h3>
+<p>Cada hito tiene un <em>runbook</em> para reproducirlo desde cero, capturas firmadas por quien hizo la prueba y su registro en la bitácora. Las claves están solo en los routers, en una base de KeePassXC compartida y en Ansible Vault; en el repositorio van marcadores. Las imágenes de Docker están fijadas por versión y se descargan de antemano, porque la feria es sin Internet (D-08).</p>
+
+<h2>Resultados</h2>
+<h3>Recuperación ante fallas</h3>
+<p>La Tabla 3 compara los tiempos del TP3, medidos contando pings perdidos, con los que se leen ahora del tablero. La diferencia entre el laboratorio de H3 y la laptop de la feria, en la misma falla, la atribuimos a la carga: la laptop tiene 7,4 GB de RAM y corre los siete routers emulados más la estación.</p>
+
+<div class="tabla">
+  <div class="titulo">Tiempo sin servicio ante fallas.</div>
+  <table>
+    <thead><tr><th>Falla</th><th>Medición</th><th>Tiempo</th></tr></thead>
+    <tbody>
+      <tr><td>Cae la placa LAN del master VRRP</td><td>TP3, ping manual</td><td class="num">4 a 16 s</td></tr>
+      <tr><td>Se corta un enlace interno (OSPF): interfaz caída / corte silencioso</td><td>TP3, ping manual</td><td class="num">2 s / 35 s</td></tr>
+      <tr><td>Se cae un proveedor (eBGP): interfaz caída / corte silencioso</td><td>TP3, ping manual</td><td class="num">2 s / 160 s</td></tr>
+      <tr><td>Corte del enlace EDGE–CORE-1</td><td>Tablero, laboratorio de H3</td><td class="num">~1 s</td></tr>
+      <tr><td>Corte del enlace EDGE–CORE-1</td><td>Tablero, laptop de la feria</td><td class="num">~10 s</td></tr>
+      <tr><td>Se apaga ISP-2: aviso de <code>DestinoInalcanzable</code> / de <code>SesionBGPCaida</code></td><td>Tablero, laboratorio de H3</td><td class="num">2 s / ~3 min</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>El último caso muestra por qué conviene combinar las dos fuentes. El ping avisa la caída de un proveedor en 2 s, mientras que la sesión BGP sigue establecida hasta que vence su temporizador de 180 s (D-15).</p>
+
+<h3>Neutralización de un ataque</h3>
+<p>Un script corre dentro del intruso un ping al EDGE cada 0,1 s y lanza el escaneo de la demo (nmap SYN a los 100 puertos más comunes). El tiempo de neutralización va desde que arranca nmap hasta el primer ping sin respuesta, y la duración del bloqueo, hasta que el ping vuelve (Tabla 4).</p>
+
+<div class="tabla">
+  <div class="titulo">Neutralización y duración del bloqueo (escaneo de la demo).</div>
+  <table>
+    <thead><tr><th>Laboratorio</th><th>Neutralización</th><th>Duración del bloqueo (configurado: 120 s)</th></tr></thead>
+    <tbody>
+      <tr><td>PC de Tomás (15,6 GB de RAM)</td><td class="num">0,08 s · 0,09 s · 0,18 s</td><td>121 s · 124 s · 125 s, y una corrida de 237 s sin causa confirmada</td></tr>
+      <tr><td>Laptop de la feria (7,4 GB de RAM)</td><td class="num">0,24 s · 0,66 s · 2,72 s</td><td>124 s · 130 s · 130 s</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>Las reglas son las mismas en las dos máquinas; la diferencia de tiempos la atribuimos a la carga de la laptop. nmap termina igual, en unos 11 s y con los 100 puertos filtrados, porque sin la defensa el firewall del TP3 ya los descartaba: el bloqueo se ve en el ping del intruso, en la lista <code>bloqueados</code> y en la alerta <code>IntrusoBloqueado</code> (Figura 2).</p>
+
+<figure>
+  <div class="par">
+    <div><img src="../capturas/H5/H5-07-laptop-falla-tablero.png" alt="Tablero durante el corte de un enlace">(a) Corte de un enlace interno</div>
+    <div><img src="../capturas/H5/H5-12-laptop-alerta-intruso-bloqueado.png" alt="Tablero durante el bloqueo del intruso">(b) Bloqueo del intruso</div>
+  </div>
+  <figcaption>El tablero en la laptop de la feria. En (a), el ping a los dos proveedores se corta y salta <code>DestinoInalcanzable</code>; en (b), salta <code>IntrusoBloqueado</code> mientras el EDGE bloquea al intruso.</figcaption>
+</figure>
+
+<h3>Seguridad y efectos colaterales</h3>
+<div class="tabla">
+  <div class="titulo">Pruebas de la defensa y del acceso.</div>
+  <table>
+    <thead><tr><th>Prueba</th><th>Resultado</th></tr></thead>
+    <tbody>
+      <tr><td>Escaneo de un puerto por segundo</td><td>Bloqueado a los 20 s: la pausa (1 s) es menor que 3 s y los puntos se acumulan</td></tr>
+      <tr><td>Escaneo de un puerto cada 4 s</td><td>No se detecta: 15 puertos en 64 s, sin bloqueo. Es el límite de la defensa</td></tr>
+      <tr><td>Escaneo desde la estación</td><td>No se bloquea (lista de confianza) y la estación sigue llegando al EDGE</td></tr>
+      <tr><td>Durante un bloqueo</td><td>Las dos sesiones BGP siguen establecidas sin reiniciarse, los vecinos OSPF en <em>Full</em>, los hosts llegan a los dos proveedores y el monitoreo sigue arriba</td></tr>
+      <tr><td>Del intruso a las LAN</td><td>Sin acceso: lo frena la regla <code>forward</code> del TP3, que no deja pasar conexiones nuevas desde los proveedores</td></tr>
+      <tr><td>API-SSL desde otra dirección</td><td>Rechazada: el servicio, el usuario y el firewall del EDGE solo aceptan a la estación</td></tr>
+      <tr><td>Segunda corrida de <code>defensa.yml</code></td><td><code>changed=0</code>; también corrige un cambio hecho a mano y frena si falta la regla del TP3</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>Limitaciones y trabajo futuro</h2>
+<p>La defensa solo ve los escaneos dirigidos al EDGE desde afuera: un equipo comprometido dentro de la red no pasa por esa regla, porque el tráfico entre las LAN lo rutean los routers de distribución, que no tienen firewall. Tampoco detecta escaneos con pausas mayores a 3 s, escaneos UDP ni ataques de fuerza bruta, que requieren un sistema de detección de intrusiones con firmas [13]. Los <em>playbooks</em> se probaron contra un CHR aislado; la corrida en el laboratorio completo, con BGP y el intruso, queda para el ensayo general (H7). La laptop de la feria trabaja al límite de memoria, a lo que atribuimos los tiempos más altos de la Tabla 4, y la corrida de 237 s no se pudo reproducir. Como trabajo futuro quedan aplicar la detección en la cadena <code>forward</code> de los routers de distribución, BFD para detectar en segundos los cortes silenciosos de BGP [14], NTP en los routers y un usuario de Ansible propio.</p>
+
+<h2>Conclusiones</h2>
+<p>La red del TP3 pasó de recuperarse sola a avisar y defenderse sola. El tablero muestra cada falla en segundos y distingue lo que nota el usuario de lo que pasa adentro, y un escaneo de puertos queda bloqueado en menos de 3 s sin tocar el enrutamiento. Medir antes de afirmar cambió dos cosas que dábamos por sabidas: cómo funciona el detector de RouterOS y cuánto dura el bloqueo en una máquina cargada. Los problemas más difíciles no fueron de redes sino de plataforma (Npcap, el puerto de NVIDIA, la memoria de la laptop), y quedaron resueltos y documentados como decisiones. Trabajar por hitos, cada uno con su rama, su revisión y su <em>runbook</em>, permitió repartir el trabajo entre los cuatro y replicar el laboratorio en más de una máquina.</p>
+
+<h2 class="sin-numero">Referencias</h2>
+<ol class="referencias">
+  <li>Grupo 11, «Laboratorio Failover Routing: la red que no se cae», memoria del TP3, GOYS, UTN FR La Plata, 2026. https://github.com/LauAubert/goys-failover-grupo11</li>
+  <li>Y. Rekhter, T. Li y S. Hares, «A Border Gateway Protocol 4 (BGP-4)», RFC 4271, IETF, 2006.</li>
+  <li>A. Heffernan, «Protection of BGP Sessions via the TCP MD5 Signature Option», RFC 2385, IETF, 1998.</li>
+  <li>J. Moy, «OSPF Version 2», RFC 2328, IETF, 1998.</li>
+  <li>S. Nadas, «Virtual Router Redundancy Protocol (VRRP) Version 3 for IPv4 and IPv6», RFC 5798, IETF, 2010.</li>
+  <li>A. Kuznetsov, «mktxp: Prometheus exporter for Mikrotik RouterOS devices». https://github.com/akpw/mktxp</li>
+  <li>Prometheus Authors, «Prometheus Documentation». https://prometheus.io/docs/</li>
+  <li>Grafana Labs, «Grafana Documentation». https://grafana.com/docs/grafana/latest/</li>
+  <li>MikroTik, «RouterOS Documentation: Firewall». https://help.mikrotik.com/docs/</li>
+  <li>Red Hat, «Ansible: community.routeros collection». https://docs.ansible.com/ansible/latest/collections/community/routeros/</li>
+  <li>G. F. Lyon, <em>Nmap Network Scanning</em>. Insecure.Com LLC, 2009.</li>
+  <li>B. Beyer, C. Jones, J. Petoff y N. R. Murphy, <em>Site Reliability Engineering</em>. O’Reilly Media, 2016.</li>
+  <li>K. Scarfone y P. Mell, «Guide to Intrusion Detection and Prevention Systems (IDPS)», NIST SP 800-94, 2007.</li>
+  <li>D. Katz y D. Ward, «Bidirectional Forwarding Detection (BFD)», RFC 5880, IETF, 2010.</li>
+</ol>
+
+</body>
+</html>
