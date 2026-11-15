@@ -1,0 +1,42 @@
+$ (en el EDGE, a mano, simula al INTRUSO recien bloqueado) /ip firewall address-list add list=bloqueados address=203.0.113.10 timeout=2m
+
+$ ansible-playbook defensa-quitar.yml -e ansible_host=127.0.0.1 -e ansible_port=2222 --vault-password-file <archivo>
+
+PLAY [Quitar la defensa del EDGE] **********************************************
+
+TASK [Contar lo que queda de la defensa] ***************************************
+[WARNING]: ansible-pylibssh not installed, falling back to paramiko
+ok: [EDGE]
+
+TASK [Interpretar la cuenta] ***************************************************
+ok: [EDGE]
+
+TASK [Frenar si la salida del EDGE no tiene el formato esperado] ***************
+ok: [EDGE]
+
+TASK [Mostrar que se va a borrar] **********************************************
+ok: [EDGE] => 
+    quitar_cuenta:
+        bloqueados: '1'
+        confianza: '3'
+        filter: '1'
+        raw: '1'
+
+TASK [Borrar la regla de deteccion] ********************************************
+changed: [EDGE]
+
+TASK [Borrar la regla de bloqueo en raw] ***************************************
+changed: [EDGE]
+
+TASK [Borrar la lista confianza] ***********************************************
+changed: [EDGE]
+
+TASK [Vaciar la lista bloqueados (desbloquea al INTRUSO)] **********************
+changed: [EDGE]
+
+TASK [Verificar que no quedo nada] *********************************************
+ok: [EDGE]
+
+PLAY RECAP *********************************************************************
+EDGE                       : ok=9    changed=4    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+

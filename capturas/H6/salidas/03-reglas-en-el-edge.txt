@@ -1,0 +1,21 @@
+$ (en el EDGE) reglas que dejo defensa.yml
+
+[admin@EDGE] > /ip firewall filter print terse where chain=input
+ 0 comment=input: conexiones en curso chain=input action=accept connection-state=established,related
+ 1 comment=input: invalidas chain=input action=drop connection-state=invalid
+ 2 comment=input: SSH y Winbox solo desde gestion chain=input action=accept protocol=tcp src-address-list=gestion dst-port=22,8291
+ 3 comment=input: BGP desde ISP-1 chain=input action=accept protocol=tcp src-address=203.0.113.1 dst-port=179
+ 4 comment=input: BGP desde ISP-2 chain=input action=accept protocol=tcp src-address=203.0.113.5 dst-port=179
+ 5 comment=input: OSPF desde enlaces internos chain=input action=accept protocol=ospf src-address=10.0.0.0/24
+ 6 comment=input: ICMP chain=input action=accept protocol=icmp
+ 7 comment=input: API-SSL de monitoreo solo desde la estacion chain=input action=accept protocol=tcp src-address=10.20.0.101 dst-port=8729
+10 comment=defensa: detecta escaneo chain=input action=add-src-to-address-list protocol=tcp psd=21,3s,3,1 src-address-list=!confianza address-list=bloqueados address-list-timeout=2m log=yes log-prefix=H5-bloqueo
+ 8 comment=input: todo lo demas chain=input action=drop
+
+[admin@EDGE] > /ip firewall raw print terse
+0 comment=defensa: descarta al origen bloqueado chain=prerouting action=drop src-address-list=bloqueados
+
+[admin@EDGE] > /ip firewall address-list print terse where list=confianza
+0 comment=ISP-1 (vecino BGP) list=confianza address=203.0.113.1 creation-time=2026-11-14 22:51:54 dynamic=no
+1 comment=ISP-2 (vecino BGP) list=confianza address=203.0.113.5 creation-time=2026-11-14 22:51:56 dynamic=no
+2 comment=red de gestion (estacion) list=confianza address=10.20.0.0/24 creation-time=2026-11-14 22:51:58 dynamic=no

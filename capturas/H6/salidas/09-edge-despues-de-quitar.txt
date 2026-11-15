@@ -1,0 +1,18 @@
+$ (en el EDGE) lo que queda de la defensa despues de defensa-quitar.yml
+
+[admin@EDGE] > /ip firewall filter print terse where chain=input
+0 comment=input: conexiones en curso chain=input action=accept connection-state=established,related
+1 comment=input: invalidas chain=input action=drop connection-state=invalid
+2 comment=input: SSH y Winbox solo desde gestion chain=input action=accept protocol=tcp src-address-list=gestion dst-port=22,8291
+3 comment=input: BGP desde ISP-1 chain=input action=accept protocol=tcp src-address=203.0.113.1 dst-port=179
+4 comment=input: BGP desde ISP-2 chain=input action=accept protocol=tcp src-address=203.0.113.5 dst-port=179
+5 comment=input: OSPF desde enlaces internos chain=input action=accept protocol=ospf src-address=10.0.0.0/24
+6 comment=input: ICMP chain=input action=accept protocol=icmp
+7 comment=input: API-SSL de monitoreo solo desde la estacion chain=input action=accept protocol=tcp src-address=10.20.0.101 dst-port=8729
+8 comment=input: todo lo demas chain=input action=drop
+
+[admin@EDGE] > /ip firewall raw print terse
+
+
+[admin@EDGE] > /ip firewall address-list print terse where list=confianza || list=bloqueados
+

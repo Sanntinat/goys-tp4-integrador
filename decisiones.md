@@ -25,6 +25,7 @@
 | [D-17](#d-17) | 14/11 | GNS3 usa el rango UDP 20000–30000 para sus enlaces | Tomás | Vigente |
 | [D-18](#d-18) | 14/11 | En `psd`, los 3 s son la pausa máxima entre intentos, no una ventana | Tomás | Vigente (corrige la propuesta) |
 | [D-19](#d-19) | 15/11 | En `confianza` entra solo la estación, no toda la LAN SERVERS | Santiago | Vigente (cambia D-03) |
+| [D-20](#d-20) | 14/11 | Ansible entra al EDGE por SSH con `admin` y lee antes de escribir, en vez de usar la API | Lautaro | Vigente |
 
 ---
 
@@ -238,3 +239,21 @@
   - H6 tiene que aplicar la misma lista (`group_vars/edge/defensa.yml`, Lautaro).
   - La corrida completa del 15/11 se hizo todavía con `10.20.0.0/24`. Falta pegar el script nuevo en el EDGE y repetir el `nmap` desde la estación en el próximo encendido (H7).
 - **Evidencia:** revisión de Lautaro en el PR de H5.
+
+<a id="d-20"></a>
+## D-20 — Ansible entra al EDGE por SSH con `admin` y lee antes de escribir, en vez de usar la API
+
+- **Contexto:** la propuesta (§7.2) pide un `defensa.yml` idempotente y un `defensa-quitar.yml` que deje el EDGE como estaba. La colección `community.routeros` ofrece dos caminos: módulos por API (`api_modify`, que ya es idempotente) o el módulo `command` por SSH, que solo manda órdenes y siempre informa «changed».
+- **Decisión:**
+  - **SSH con el módulo `command`.** Cada playbook primero lee el EDGE (posición de la detección dentro de `input`, cada regla con `print terse`, las direcciones de `confianza`) y después manda solo las órdenes que faltan, con `changed_when` puesto a mano. Una regla que está pero difiere se borra y se vuelve a crear en su lugar.
+  - **Usuario `admin`,** el único con permiso de escritura desde el TP3. La clave va en `group_vars/edge/vault.yml`, cifrado con Ansible Vault y además fuera de Git.
+  - **`host_key_checking` activo:** la llave del EDGE se acepta una vez a mano comparando la huella.
+  - **Ansible del paquete de Ubuntu 24.04** (`ansible` 9, `ansible-core` 2.16), que trae las colecciones: la estación no necesita Internet en la demo.
+- **Alternativas descartadas:**
+  - **`api_modify` por API-SSL:** habría que darle escritura a un usuario por la API, que hoy solo usa `prometheus` en modo lectura (H3), y el orden de las reglas de `filter` obliga a manejar la cadena entera.
+  - **Mandar el `.rsc` de H5 tal cual:** funciona, pero siempre rehace todo y no se puede mostrar la idempotencia.
+  - **Un usuario `ansible` aparte:** suma otra clave para un único equipo; queda como mejora.
+- **Consecuencias:**
+  - La comparación de parámetros depende de cómo RouterOS imprime cada valor en `print terse`. En 7.21.5 coincide: la segunda corrida da `changed=0` (prueba en un CHR aislado, `capturas/H6/H6-02`). Si una versión futura cambiara el formato, el playbook rehace la regla en cada corrida, sin romper nada.
+  - `defensa-quitar.yml` también vacía `bloqueados`, así la demo se reinicia sin esperar los 2 minutos.
+- **Evidencia:** [runbook H6](demo/runbooks/automatizacion.md) y `capturas/H6/`.
