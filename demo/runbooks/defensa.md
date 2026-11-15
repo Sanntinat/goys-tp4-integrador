@@ -3,8 +3,8 @@
 - **Hito:** H5 Defensa (Santiago y Tomás)
 - **Reglas:** Santiago ([`H5-defensa.rsc`](../routers/H5-defensa.rsc))
 - **Pruebas desde el INTRUSO y medición:** Tomás Martin, 14/11/2026, en su laboratorio
-- **Pendiente:** la corrida completa de la demo, juntos, en la laptop de Santiago (EDGE con H3)
-- **Resultado:** un escaneo de puertos desde el INTRUSO queda bloqueado en **menos de 0,2 s**; el bloqueo dura 2 minutos; BGP, la gestión y los hosts no se ven afectados
+- **Corrida completa de la demo:** Santiago, 15/11/2026, en su laptop (la de la feria), con H3 y H4 montados
+- **Resultado:** un escaneo de puertos desde el INTRUSO queda bloqueado en **menos de 0,2 s** en el laboratorio de Tomás y **entre 0,24 y 2,72 s** en la laptop de la feria; el bloqueo dura 2 minutos; BGP, OSPF, la gestión, el monitoreo y los hosts no se ven afectados, y el tablero dispara `IntrusoBloqueado`
 
 ---
 
@@ -64,8 +64,39 @@ En el laboratorio de Tomás: EDGE con la configuración del TP3 más las mismas 
 
 ---
 
+## Corrida completa en la laptop de la feria
+
+El 15/11, en la laptop de Santiago (Lenovo, 7,4 GB de RAM, Windows 11 25H2). Antes hubo que montar ahí lo que faltaba: H4 (placa 3 de la estación, nube `INTRUSO`, `H4-intruso.rsc` en ISP-1 y `preparar-intruso.sh`) y H3 (`H3-monitoreo.rsc` en los 5 routers, claves en `mktxp.conf` y `.env`, `docker compose up -d`). Se siguió el orden del guion de la propuesta (§9):
+
+| # | Paso de la demo | Resultado |
+|:-:|---|---|
+| 1 | **Falla:** se suspende en GNS3 el enlace EDGE–CORE-1 | El tablero marca los dos ISP en rojo y dispara `DestinoInalcanzable` (`critical`); OSPF sale por CORE-2 y el ping vuelve en **~10 s**, leído del tablero |
+| 2 | **Ataque sin defensa:** `bash ~/intruso.sh escanear` | Ping del INTRUSO al EDGE 4/4; nmap revisa 100 puertos en 11,6 s, todos `filtered`, sin obstáculos |
+| 3 | **Despliegue:** `H5-defensa.rsc` pegado en el EDGE | La detección queda justo antes de «input: todo lo demas» (y después de la regla de API-SSL de H3) |
+| 4 | **Ataque con defensa:** `bash ~/medir-neutralizacion.sh`, tres corridas | **Neutralización: 2,72 s, 0,66 s y 0,24 s. Bloqueo: 130 s, 130 s y 124 s** |
+| 5 | Mientras dura el bloqueo, en el EDGE | Solo `203.0.113.10` en `bloqueados`; la regla de `raw` descarta (243 paquetes en la corrida 1); las dos sesiones BGP siguen `established` sin reiniciarse (42 min de *uptime*) y los dos vecinos OSPF en `Full`; una sola línea `H5-bloqueo` en el log por cada bloqueo |
+| 6 | Mientras dura el bloqueo, en el tablero | Se dispara **`IntrusoBloqueado`** (EDGE, `warning`), lo que faltaba probar con H3 |
+| 7 | Falso positivo: nmap desde la estación a `10.255.255.1` | **No se bloquea**: 100 puertos en 2,8 s (abierto el 22, permitido desde gestión), la estación sigue llegando al EDGE (3/3), `bloqueados` vacía, los 3 *targets* de Prometheus en UP y sin alertas |
+
+| Captura | Qué muestra |
+|---|---|
+| `H5-07` / `H5-08` | Paso 1: el tablero con el enlace cortado y después de la recuperación |
+| `H5-09` | Paso 3: las reglas en el EDGE con H3 (detección, `raw` y `confianza`) |
+| `H5-10` / `H5-11` | Pasos 4 y 5: `bloqueados` durante la corrida 1; `raw`, BGP y OSPF durante el bloqueo |
+| `H5-12` | Paso 6: la alerta `IntrusoBloqueado` en el tablero |
+| `H5-13` / `H5-15` | Paso 4: corrida 1, y corridas 2 y 3 |
+| `H5-14` | Paso 5: el log con una línea `H5-bloqueo` por bloqueo |
+| `H5-16` | Paso 7: el nmap desde la estación no la bloquea |
+
+---
+
 ## Observaciones
 
-- **El bloqueo duró 237 s en la primera corrida**, casi el doble de los 120 s configurados; las tres corridas siguientes dieron 121, 124 y 125 s. No encontramos la causa. Una hipótesis es el reloj de los routers emulados, que en el TP3 se atrasó más de 2 horas en una sesión (memoria del TP3, §8), pero no explica por qué las otras tres corridas dieron bien. Conviene repetir la prueba en la laptop de Santiago antes de la feria.
+- **El bloqueo duró 237 s en la primera corrida de Tomás**, casi el doble de los 120 s configurados; las tres corridas siguientes dieron 121, 124 y 125 s. No encontramos la causa. Una hipótesis es el reloj de los routers emulados, que en el TP3 se atrasó más de 2 horas en una sesión (memoria del TP3, §8). **En la laptop de la feria no se repitió:** 130, 130 y 124 s.
+- **En la laptop de la feria la neutralización es más lenta** (2,72 s, 0,66 s y 0,24 s, contra menos de 0,2 s en el laboratorio de Tomás) y baja de una corrida a la otra. La primera se hizo justo después de que la estación se trabara (ver abajo). Sigue siendo un bloqueo en segundos, que es lo que promete la propuesta, pero en el ensayo (H7) conviene medir de nuevo con la laptop descansada.
+- **La laptop de la feria está al límite.** Los 7 routers (256 MB cada uno, emulados por software con `accel=tcg`), la estación (2 GB) y Windows llenan los 7,4 GB; con un navegador abierto las consolas de GNS3 dejaron de responder y hubo que cerrar GNS3. Para la corrida: cerrar el navegador y frenar los servicios que no se usan (en esta laptop, PostgreSQL), arrancar primero los routers, esperar a que booteen y recién después la estación.
+- **La estación tarda ~9 min en arrancar y a veces se traba.** En esta laptop está activo Hyper-V, así que VirtualBox no puede usar AMD-V y corre en modo NEM (el log de la VM dice «AMD-V is not available… fall back to NEM»), que es mucho más lento. Durante la corrida el kernel de la estación tuvo dos *soft lockups* (un CPU trabado 128 s) y SSH dejó de responder un par de minutos; los containers siguieron andando. Bajar el refresco del tablero de 1 s a 5 s alivió la carga (Grafana usaba 23 % de CPU). Para la feria: prender la estación con 10 minutos de margen y evaluar en H7 si se apaga Hyper-V en la laptop o si la estación pasa a 1 CPU.
+- **La alerta `IntrusoBloqueado` aparece dos veces en el tablero**, porque sus dos condiciones (descartes en `raw` y la lista `bloqueados` no vacía) se disparan juntas y el panel muestra una fila por cada una, con una columna `log` de más. No cambia lo que detecta; es un ajuste del panel para H3.
+- **La recuperación ante el corte EDGE–CORE-1 tardó ~10 s** en la laptop, contra ~1 s en H3. Suspender el enlace en GNS3 no baja la interfaz del router, así que OSPF probablemente espera a que venza su temporizador. Queda para revisar en H7.
 - **nmap no se entera del bloqueo:** igual informa los puertos como `filtered`, porque sin la defensa el firewall del TP3 ya los descartaba. Lo que muestra el bloqueo es el ping del INTRUSO al EDGE, que deja de responder (por eso el script lo usa para medir), y en el EDGE la lista `bloqueados` y los contadores de `raw`.
 - **En la demo**, el INTRUSO queda bloqueado 2 minutos. Para repetir el escaneo con otro visitante hay que esperar o sacarlo a mano en el EDGE: `/ip firewall address-list remove [find list=bloqueados]`.
