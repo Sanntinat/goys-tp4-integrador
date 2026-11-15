@@ -8,7 +8,7 @@
 |---|---|---|---|---|
 | [D-01](#d-01) | 07/11 | La red del TP3 se reutiliza sin cambios de diseño | Grupo | Vigente |
 | [D-02](#d-02) | 07/11 | Detección de escaneos con `psd` de RouterOS y bloqueo en `raw` | Grupo | Vigente |
-| [D-03](#d-03) | 07/11 | La regla de detección va antes del drop final y la red de gestión entra en `confianza` | Tomás | Vigente |
+| [D-03](#d-03) | 07/11 | La regla de detección va antes del drop final y la red de gestión entra en `confianza` | Tomás | Vigente en parte (la lista `confianza` la cambia D-19) |
 | [D-04](#d-04) | 12/11 | El laboratorio del TP4 es una copia del proyecto GNS3, fuera de OneDrive | Santiago | Vigente |
 | [D-05](#d-05) | 12/11 | La estación es una VM Ubuntu en VirtualBox, no la laptop con Windows | Santiago | Vigente (cambia la propuesta) |
 | [D-06](#d-06) | 12/11 | La VM se une a GNS3 con un túnel UDP en una nube, no como nodo VirtualBox | Santiago | Vigente |
@@ -23,6 +23,8 @@
 | [D-15](#d-15) | 14/11 | La caída de un proveedor se detecta por el ping, no por BGP | Juan Bautista | Vigente |
 | [D-16](#d-16) | 14/11 | El INTRUSO es un container de la estación unido a ISP-1 por un segundo túnel UDP | Tomás | Vigente (cambia la propuesta) |
 | [D-17](#d-17) | 14/11 | GNS3 usa el rango UDP 20000–30000 para sus enlaces | Tomás | Vigente |
+| [D-18](#d-18) | 14/11 | En `psd`, los 3 s son la pausa máxima entre intentos, no una ventana | Tomás | Vigente (corrige la propuesta) |
+| [D-19](#d-19) | 15/11 | En `confianza` entra solo la estación, no toda la LAN SERVERS | Santiago | Vigente (cambia D-03) |
 
 ---
 
@@ -53,7 +55,7 @@
 - **Contexto:** el `input` del EDGE (TP3) termina con «input: todo lo demas», que descarta todo lo no permitido.
 - **Decisión:**
   - La regla `psd` se ubica antes de esa regla final (`place-before`). Agregada al final, nunca vería el escaneo.
-  - La lista `confianza` incluye `10.20.0.0/24` además de los dos ISP. Así una prueba con `nmap` desde la estación no la bloquea a ella misma.
+  - La lista `confianza` incluye `10.20.0.0/24` además de los dos ISP. Así una prueba con `nmap` desde la estación no la bloquea a ella misma. **Cambiado por [D-19](#d-19):** ahora entra solo la estación.
 - **Evidencia:** commit `140bf63` (Tomás Martin).
 
 <a id="d-04"></a>
@@ -213,3 +215,26 @@
   - Vale para cualquier PC con la app de NVIDIA. Síntoma: la estación no llega a `10.20.0.1` y `Get-NetUDPEndpoint` muestra `nvcontainer` en un puerto del rango de GNS3.
   - El cambio es por PC y no viaja con el proyecto. En la laptop de la demo hay que revisarlo antes de la feria.
 - **Evidencia:** [runbook H4, problemas conocidos](demo/runbooks/intruso.md#problemas-conocidos).
+
+<a id="d-18"></a>
+## D-18 — En `psd`, los 3 s son la pausa máxima entre intentos, no una ventana
+
+- **Contexto:** la propuesta (§3.3) y el documento explican la regla de detección como «un origen que prueba muchos puertos en 3 segundos». En las pruebas de H5, un escaneo de un puerto por segundo, que en 3 s suma como mucho 9 puntos, igual quedó bloqueado a los 20 s.
+- **Qué hace en realidad `psd=21,3s,3,1`:** suma 3 puntos por cada puerto bajo y 1 por cada puerto alto mientras el mismo origen no deje pasar **más de 3 s entre un intento y el siguiente**. Si la cadena llega a 21, el origen entra en `bloqueados`. No importa cuánto dure el escaneo, sino la pausa entre intentos.
+- **Decisión:** se mantienen los valores (`21,3s,3,1`) y se corrige la explicación en el runbook y en el documento final.
+- **Consecuencias:**
+  - La defensa detecta cualquier escaneo con pausas menores a 3 s, rápido o lento: el de la demo, en menos de 0,2 s; uno de un puerto por segundo, a los 20 s.
+  - Se le escapa un escaneo con pausas mayores a 3 s: uno de un puerto cada 4 s revisó 15 puertos en 64 s sin bloqueo. Ese es el límite que hay que declarar (propuesta §10).
+- **Evidencia:** [runbook H5](demo/runbooks/defensa.md), pruebas 3 y 4; `capturas/H5/H5-05`.
+
+<a id="d-19"></a>
+## D-19 — En `confianza` entra solo la estación, no toda la LAN SERVERS
+
+- **Contexto:** D-03 metió toda la red de gestión (`10.20.0.0/24`) en `confianza`, para que un `nmap` de prueba desde la estación no la bloqueara. En la revisión de H5, Lautaro marcó que así queda fuera de la detección cualquier equipo de la LAN SERVERS: uno infectado podría escanear el EDGE y nunca terminaría en `bloqueados`.
+- **Decisión:** `confianza` = ISP-1 (`203.0.113.1`), ISP-2 (`203.0.113.5`) y la estación (`10.20.0.101`), la única de esa red que necesita estar porque Prometheus consulta el EDGE cada pocos segundos y desde ahí corren Ansible (H6) y las pruebas con `nmap` ([`H5-defensa.rsc`](demo/routers/H5-defensa.rsc)).
+- **Por qué no rompe nada:** en la demo, ningún otro equipo de `10.20.0.0/24` le habla TCP al EDGE. El SSH y el Winbox desde gestión se aceptan en una regla anterior a la detección, así que no suman puntos, y los DIST solo le hablan OSPF, por los enlaces internos.
+- **Consecuencias:**
+  - Un equipo de la LAN SERVERS que escanee el EDGE ahora sí termina bloqueado. Sigue sin verse un escaneo entre las LAN, que no pasa por el EDGE ([runbook H5, límites](demo/runbooks/defensa.md#límites-de-la-defensa)).
+  - H6 tiene que aplicar la misma lista (`group_vars/edge/defensa.yml`, Lautaro).
+  - La corrida completa del 15/11 se hizo todavía con `10.20.0.0/24`. Falta pegar el script nuevo en el EDGE y repetir el `nmap` desde la estación en el próximo encendido (H7).
+- **Evidencia:** revisión de Lautaro en el PR de H5.
