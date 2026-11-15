@@ -9,11 +9,12 @@
 /ip firewall address-list remove [find list=confianza]
 
 # 1. Lista de confianza: nunca entran en "bloqueados", aunque superen el umbral.
-#    Proveedores (un falso positivo cortaria BGP) y red de gestion (la estacion: monitoreo y nmap de prueba).
+#    Proveedores (un falso positivo cortaria BGP) y SOLO la estacion (monitoreo, Ansible y nmap de prueba), no toda
+#    la LAN SERVERS: un equipo infectado de esa red que escanee el EDGE tiene que poder terminar en "bloqueados" (D-19).
 /ip firewall address-list
 add list=confianza address=203.0.113.1 comment="ISP-1 (vecino BGP)"
 add list=confianza address=203.0.113.5 comment="ISP-2 (vecino BGP)"
-add list=confianza address=10.20.0.0/24 comment="red de gestion (estacion)"
+add list=confianza address=10.20.0.101 comment="estacion (Prometheus, Ansible)"
 
 # 2. Deteccion en input, ANTES de "input: todo lo demas" (si fuera despues, el escaneo ya estaria descartado).
 #    Solo ve paquetes TCP nuevos: lo establecido se acepta en la primera regla del TP3.
@@ -38,6 +39,6 @@ add chain=prerouting src-address-list=bloqueados action=drop comment="defensa: d
 # Que no se rompa nada (despues de aplicar y despues de cada escaneo):
 #   /routing bgp session print terse                 -> hacia-ISP-1 y hacia-ISP-2 established
 #   /routing ospf neighbor print terse               -> CORE-1 y CORE-2 en Full
-#   /ip firewall address-list print where list=bloqueados   -> solo el INTRUSO (203.0.113.10), nunca un ISP ni 10.20.0.x
+#   /ip firewall address-list print where list=bloqueados   -> solo el INTRUSO (203.0.113.10), nunca un ISP ni la estacion (10.20.0.101)
 #
 # Vuelta atras: pegar solo el paso 0 (borra deteccion, bloqueo y confianza; "bloqueados" vence sola en 2 min).

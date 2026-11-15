@@ -14,7 +14,7 @@ Están en [`H5-defensa.rsc`](../routers/H5-defensa.rsc) y se aplican solo en el 
 
 | Pieza | Qué hace |
 |---|---|
-| Lista `confianza` | ISP-1 (`203.0.113.1`), ISP-2 (`203.0.113.5`) y la red de gestión (`10.20.0.0/24`) quedan fuera de la detección |
+| Lista `confianza` | ISP-1 (`203.0.113.1`), ISP-2 (`203.0.113.5`) y la estación (`10.20.0.101`) quedan fuera de la detección. Hasta el 15/11 entraba toda la LAN SERVERS (`10.20.0.0/24`); se achicó a la estación para que un equipo infectado de esa red sí pueda terminar bloqueado ([D-19](../../decisiones.md#d-19)) |
 | `filter input`, «defensa: detecta escaneo» | `psd=21,3s,3,1`: suma 3 por cada puerto bajo (<1024) y 1 por cada puerto alto; si un mismo origen llega a 21 sin dejar pasar más de 3 s entre intentos, entra en `bloqueados` por 2 minutos. Va **antes** de «input: todo lo demas». Deja una línea en el log con el prefijo `H5-bloqueo` (`/log print where message~"H5-bloqueo"`) |
 | `raw prerouting`, «defensa: descarta al origen bloqueado» | Descarta todo lo que llega de `bloqueados` antes del seguimiento de conexiones, incluido el ping |
 
@@ -50,7 +50,7 @@ En el laboratorio de Tomás: EDGE con la configuración del TP3 más las mismas 
 | 2 | Vencimiento del bloqueo (2 min) | La misma corrida espera a que el ping vuelva | **121 s, 124 s y 125 s.** Una primera corrida dio 237 s (ver observaciones) |
 | 3 | Escaneo lento, un puerto por segundo | `-Pn -sS --scan-delay 1s --top-ports 20 203.0.113.2` | **También se bloquea**, a los 20 s: la pausa entre intentos (1 s) es menor que 3 s y los puntos se acumulan |
 | 4 | Escaneo muy lento, un puerto cada 4 s | `-Pn -sS --scan-delay 4s --max-retries 0 --top-ports 15 203.0.113.2` | **No se detecta**: 15 puertos en 64 s, sin bloqueo. Es el límite de la defensa |
-| 5 | Falso positivo desde la estación | nmap `-T4` a 100 puertos de `10.255.255.1` desde un container en la red de la estación (sale como `10.20.0.101`) | **No se bloquea** (`10.20.0.0/24` está en `confianza`); la estación sigue llegando al EDGE (3/3). Desde gestión se ve abierto el 22 (SSH), que el TP3 permite desde ahí |
+| 5 | Falso positivo desde la estación | nmap `-T4` a 100 puertos de `10.255.255.1` desde un container en la red de la estación (sale como `10.20.0.101`) | **No se bloquea** (la estación está en `confianza`; en esta prueba, con toda `10.20.0.0/24`); la estación sigue llegando al EDGE (3/3). Desde gestión se ve abierto el 22 (SSH), que el TP3 permite desde ahí |
 | 6 | Efectos colaterales durante el bloqueo | Con el INTRUSO bloqueado: ping de PC-USER a los loopbacks de los ISP y de la estación al EDGE | **Sin efectos**: PC-USER llega a `198.51.100.1` y `198.51.100.2` (3/3 cada uno) y la estación al EDGE (3/3). Los ISP están en `confianza`, así que BGP no se toca |
 
 | Captura | Qué muestra |
@@ -66,7 +66,7 @@ En el laboratorio de Tomás: EDGE con la configuración del TP3 más las mismas 
 
 ## Corrida completa en la laptop de la feria
 
-El 15/11, en la laptop de Santiago (Lenovo, 7,4 GB de RAM, Windows 11 25H2). Antes hubo que montar ahí lo que faltaba: H4 (placa 3 de la estación, nube `INTRUSO`, `H4-intruso.rsc` en ISP-1 y `preparar-intruso.sh`) y H3 (`H3-monitoreo.rsc` en los 5 routers, claves en `mktxp.conf` y `.env`, `docker compose up -d`). Se siguió el orden del guion de la propuesta (§9):
+El 15/11, en la laptop de Santiago (Lenovo, 7,4 GB de RAM, Windows 11 25H2). Antes hubo que montar ahí lo que faltaba: H4 (placa 3 de la estación, nube `INTRUSO`, `H4-intruso.rsc` en ISP-1 y `preparar-intruso.sh`) y H3 (`H3-monitoreo.rsc` en los 5 routers, claves en `mktxp.conf` y `.env`, `docker compose up -d`). Se siguió el orden del guion de la propuesta (§9). En esta corrida `confianza` todavía tenía toda `10.20.0.0/24`; el cambio de D-19 (solo la estación) es posterior y no cambia ninguna de estas pruebas, porque el único equipo de esa red que le habla TCP al EDGE es la estación. Queda verificarlo en el EDGE en el próximo encendido (H7):
 
 | # | Paso de la demo | Resultado |
 |:-:|---|---|
@@ -87,6 +87,16 @@ El 15/11, en la laptop de Santiago (Lenovo, 7,4 GB de RAM, Windows 11 25H2). Ant
 | `H5-13` / `H5-15` | Paso 4: corrida 1, y corridas 2 y 3 |
 | `H5-14` | Paso 5: el log con una línea `H5-bloqueo` por bloqueo |
 | `H5-16` | Paso 7: el nmap desde la estación no la bloquea |
+
+---
+
+## Límites de la defensa
+
+Lo que la defensa **no** cubre, para tener la respuesta lista en la feria (propuesta §10):
+
+- **Un atacante que ya está adentro.** La detección está en `input` del EDGE: solo ve escaneos dirigidos al EDGE. La defensa protege el borde contra escaneos que vienen de Internet; un equipo comprometido dentro de la red no pasa por esta regla. Si un equipo de USERS escanea a los servidores, ese tráfico lo rutean DIST-1 y DIST-2, que tienen las dos LAN y no tienen firewall desde el TP3, y nunca llega al EDGE. Para detectarlo habría que aplicar lo mismo en `forward` de los DIST, coordinado con VRRP, y lo dejamos como trabajo futuro (sugerencia de Lautaro en la revisión de H5).
+- **Escaneos lentos.** Un escaneo que deja pasar más de 3 s entre intentos no suma puntos y no se bloquea (prueba 4 y [D-18](../../decisiones.md#d-18)).
+- **Escaneos UDP.** La regla solo mira TCP (`protocol=tcp`): un `nmap -sU` no suma puntos. No lo probamos.
 
 ---
 
