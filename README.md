@@ -1,165 +1,129 @@
-# TP4 — Proyecto Integrador + Feria de Redes
+# Sistema Inmune: la red que se cura y se defiende sola
 
-> **GOYS** — Gestión Operativa y Seguridad en Redes · UTN FR La Plata
-> **Peso:** 60% de la nota del bloque Redes/Operación
-> **Muestra:** Feria de Redes (última clase del bloque)
+> **TP4 Integrador · Modalidad A (Proyecto de Desarrollo)** · Gestión Operativa y Seguridad en Redes (GOYS) · UTN Facultad Regional La Plata
+> **Grupo 11:** Lautaro Aubert · Juan Bautista Cuenca · Tomás Martin · Santiago Natalichio Bestosini
 
-Este es el **repositorio base del Trabajo Práctico Integrador (TP4)**. Un integrante del grupo lo **forkea**, agrega al resto como **colaboradores**, y todo el trabajo colaborativo del TP4 se hace acá.
+La red empresarial del [TP3](https://github.com/LauAubert/goys-failover-grupo11), con siete routers MikroTik, ya se recuperaba sola de la caída de un gateway, de un enlace o de un proveedor. Este proyecto le agrega lo que le faltaba: un **tablero en tiempo real con alertas**, para que alguien se entere de una falla mientras pasa, y una **defensa en el router de borde** que reconoce un escaneo de puertos y bloquea al atacante sin intervención humana, desplegada con **Ansible**.
 
----
+La idea que ordena el diseño es la de un sistema inmune: la red cicatriza (VRRP, OSPF y BGP del TP3), siente dónde le duele (Prometheus y Grafana) y neutraliza al intruso (detección y bloqueo en el EDGE).
 
-## 1. ¿Qué es el TP4?
-
-El TP4 integra **las 3 áreas de la materia** —**Redes**, **Operación (Gestión)** y **Seguridad**— en un proyecto con mayor autonomía:
-
-| Área | Qué cubre |
-|------|-----------|
-| 🔌 **Redes** | Topología, routing (BGP/OSPF), switching, VXLAN, containers, L2/L3 |
-| ⚙️ **Operación (Gestión)** | Automatización (Ansible), monitoreo (Prometheus/Grafana), orquestación (K3s), GitOps |
-| 🛡️ **Seguridad** | Segmentación, network policies, mTLS, Zero Trust, Cilium/Hubble |
-
-Se muestra al final en una **Feria de Redes** (formato congreso): cada grupo monta una **estación** con póster, documento y demo funcionando, y la defiende frente a docentes, compañeros e invitados.
-
-Cada grupo elige **UNA** de las 3 modalidades (sección 2).
+![Arquitectura del proyecto](diagramas/arquitectura.svg)
 
 ---
 
-## 2. Modalidades (elegir UNA)
+## Resultados
 
-| Modalidad | Qué es | Template |
-|-----------|--------|----------|
-| **A — Proyecto de Desarrollo** | Diseñar e implementar una solución que integre redes, containers, automatización y monitoreo | `templates/template-modalidad-a.md` |
-| **B — Artículo de Revisión del Estado del Arte** | Investigar el estado del arte de una tecnología, sus innovaciones emergentes y oportunidades | `templates/template-modalidad-b.md` |
-| **C — Trabajo de Campo** | Analizar una red real (o caso de estudio) y proponer mejoras | `templates/template-modalidad-c.md` |
+| Qué se midió | Resultado |
+|---|---|
+| Corte de un enlace interno, visto en el tablero | La red vuelve en ~1 s (laboratorio de H3) a ~10 s (laptop de la feria) |
+| Caída de un proveedor | `DestinoInalcanzable` avisa en 2 s; la sesión BGP recién cae a los ~3 min ([D-15](decisiones.md#d-15)) |
+| Escaneo de puertos (nmap, 100 puertos) | **Bloqueado entre 0,08 y 2,72 s** después de empezar |
+| Duración del bloqueo | ~2 minutos (121–130 s; una corrida de 237 s sin causa confirmada) |
+| Durante el bloqueo | BGP, OSPF, los hosts y el monitoreo siguen funcionando |
+| Escaneo con más de 3 s entre intentos | No se detecta: es el límite de la defensa ([D-18](decisiones.md#d-18)) |
 
-### ¿Cómo integra cada modalidad las 3 áreas?
-
-| Área | A — Desarrollo | B — Estado del Arte | C — Trabajo de Campo |
-|------|----------------|---------------------|----------------------|
-| 🔌 **Redes** | Topología + routing + containers **implementados** | Estado del arte de una tecnología de red | Relevamiento de la red real |
-| ⚙️ **Operación** | Ansible + monitoreo **automatizados** | Network automation, observabilidad | Propuesta de automatización/monitoreo |
-| 🛡️ **Seguridad** | Network policies, segmentación, mTLS | Zero Trust, eBPF security, mTLS | Segmentación + mejoras de seguridad |
-
-> ⚠️ **La seguridad NO es opcional en ninguna modalidad.** Sin importar cuál elijan, el proyecto debe mostrar cómo aborda la seguridad de la red.
-
-> 📖 El detalle de cada modalidad está en su template. El formato del documento (portada UTN, A4, estilo) está en `templates/template-documento.md`.
+El detalle, con el método de medición y las limitaciones, está en el [documento final](documento/documento-final.pdf).
 
 ---
 
-## 3. Arrancar: fork + grupo + colaboradores
+## Entregables
 
-### 3.1. Un integrante hace el fork
+| Entregable | Dónde |
+|---|---|
+| Documento final (short paper) | [`documento/documento-final.pdf`](documento/documento-final.pdf), fuente en `documento-final.html` (`python documento/generar-pdf.py` lo regenera) |
+| Propuesta presentada para la feria | [`documento/propuesta-tp4.pdf`](documento/propuesta-tp4.pdf) y [`propuesta.md`](propuesta.md) |
+| Póster A1 | `poster/` (pendiente) |
+| Video de respaldo de la demo | Pendiente (H7) |
+| Evidencia | [`capturas/`](capturas/), una carpeta por hito, con la firma de quien hizo cada prueba |
 
-1. Ese integrante entra a este repositorio y hace **Fork** (botón arriba a la derecha).
-2. Ahora tiene una copia en su cuenta: `tu-usuario/goys-tp4-integrador`.
+---
 
-### 3.2. Sumar colaboradores (compañeros + docentes)
+## Equipo y hitos
 
-1. En el fork, ir a **Settings → Collaborators and teams → Add people**.
-2. Agregar a **cada integrante** del grupo (por su usuario de GitHub).
-3. Agregar también a los **docentes** para que puedan revisar el trabajo:
-   - `ofalabel` — **Osvaldo Falabella** (titular de la materia)
-   - `rodriguezemautn` — **Emanuel Rodríguez** (bloque Redes/Operación)
-4. Cada uno acepta la invitación (llega por mail/notificación).
+Cada hito se trabajó en una rama propia y entró a `main` por un *pull request* revisado por otro integrante ([D-12](decisiones.md#d-12)).
 
-> ⚠️ **Todos los integrantes deben aparecer como colaboradores y con commits propios.** Si alguien no aparece en el historial de git, no acredita el TP.
+| Hito | Qué se hizo | Responsable | PR |
+|---|---|---|:-:|
+| H1 · H2 | Copia del laboratorio del TP3 y estación de monitoreo conectada a la red | Santiago | #1 |
+| H3 | Tablero y alertas: usuario de solo lectura y API-SSL en los routers; Prometheus, mktxp, blackbox y Grafana | Juan Bautista | #2 |
+| H4 | INTRUSO del lado de ISP-1: container con nmap unido a la red por un túnel UDP | Tomás | #3 |
+| H5 | Defensa en el EDGE (Santiago) y pruebas y medición desde el INTRUSO (Tomás); corrida completa en la laptop de la feria | Santiago y Tomás | #4 · #6 |
+| H6 | Despliegue y retiro de la defensa con Ansible | Lautaro | #5 |
+| H7 | Ensayo general y video de respaldo | Todo el grupo | pendiente |
 
-### 3.3. Clonar y configurar identidad
+La bitácora con fechas está en [`progreso.md`](progreso.md), y las 20 decisiones técnicas, con contexto, alternativas y evidencia, en [`decisiones.md`](decisiones.md).
 
-```bash
-# Cada integrante clona el fork
-git clone https://github.com/<grupo>/goys-tp4-integrador.git
-cd goys-tp4-integrador
+---
 
-# Configurar identidad (usar el mail de la facultad)
-git config user.name "Apellido, Nombre"
-git config user.email "tu-email@alumnos.frlp.utn.edu.ar"
+## Tecnologías
+
+| Pieza | Versión |
+|---|---|
+| GNS3 (servidor local, sin GNS3 VM) | 2.2.61 |
+| MikroTik CHR (RouterOS), 7 routers | 7.21.5 |
+| QEMU para Windows | 11.x |
+| VirtualBox (estación) | 7.x |
+| Ubuntu Server (estación) | 24.04 |
+| Prometheus · Grafana · blackbox exporter · mktxp | 3.5.0 · 12.0.0 · 0.27.0 · 1.2.20 |
+| Ansible (paquete de Ubuntu, con `community.routeros`) | 9 |
+| INTRUSO: Alpine · nmap | 3.20 · 7.95 |
+
+Las imágenes de Docker están fijadas por versión y se descargan de antemano, porque la demo corre sin Internet ([D-08](decisiones.md#d-08)).
+
+---
+
+## Cómo reproducirlo
+
+Sobre una PC con Windows, GNS3, QEMU y VirtualBox, y el proyecto de GNS3 del TP3. Cada paso tiene su *runbook*:
+
+1. **Laboratorio y estación (H1 y H2):** [`demo/runbooks/preparar-estacion.md`](demo/runbooks/preparar-estacion.md). La estación es una VM de VirtualBox unida a GNS3 por un túnel UDP ([D-05](decisiones.md#d-05), [D-06](decisiones.md#d-06)). En una PC con la app de NVIDIA, revisar antes [D-17](decisiones.md#d-17).
+2. **Tablero (H3):** aplicar [`demo/routers/H3-monitoreo.rsc`](demo/routers/H3-monitoreo.rsc) en los 5 routers de la empresa; en la estación, completar `demo/.env` (desde [`.env.ejemplo`](demo/.env.ejemplo)) y `demo/mktxp/mktxp.conf` (desde [`mktxp.conf.ejemplo`](demo/mktxp/mktxp.conf.ejemplo)) y correr `docker compose up -d` en `demo/`. Grafana queda en `http://127.0.0.1:3000`.
+3. **INTRUSO (H4):** [`demo/runbooks/intruso.md`](demo/runbooks/intruso.md).
+4. **Defensa (H5):** [`demo/routers/H5-defensa.rsc`](demo/routers/H5-defensa.rsc) en el EDGE; pruebas y medición en [`demo/runbooks/defensa.md`](demo/runbooks/defensa.md).
+5. **Automatización (H6):** [`demo/runbooks/automatizacion.md`](demo/runbooks/automatizacion.md).
+
+**Orden de arranque en cada sesión:** primero GNS3 con todos los nodos (los routers tardan 2 o 3 minutos), después la estación. Al terminar, apagar la estación (`sudo poweroff`) y después los nodos.
+
+---
+
+## Guion de la demo
+
+En la estación, con GNS3 y el tablero de Grafana a la vista:
+
+| # | Paso | Cómo | Qué se ve |
+|:-:|---|---|---|
+| 1 | Falla | Cortar un enlace o apagar un router en GNS3 | El ping del tablero se corta, salta `DestinoInalcanzable` y la red se recupera sola |
+| 2 | Ataque sin defensa | `bash ~/intruso.sh escanear` | nmap termina y el INTRUSO sigue llegando al EDGE |
+| 3 | Despliegue | `ansible-playbook defensa.yml --ask-vault-pass` (en `demo/ansible/`) | Ansible aplica la detección y el bloqueo en el EDGE |
+| 4 | Ataque con defensa | `bash ~/medir-neutralizacion.sh` | El INTRUSO queda bloqueado en segundos, salta `IntrusoBloqueado` y BGP sigue arriba |
+| 5 | Reinicio entre visitantes | `ansible-playbook defensa-quitar.yml --ask-vault-pass` | El EDGE vuelve al estado del paso 1 y se vacía la lista de bloqueados |
+
+---
+
+## Estructura del repositorio
+
+```
+├── README.md              # este archivo
+├── propuesta.md           # propuesta aprobada para la feria
+├── decisiones.md          # registro de decisiones técnicas (D-01 a D-20)
+├── progreso.md            # bitácora del grupo
+├── documento/             # propuesta y documento final (PDF + fuente HTML)
+├── diagramas/             # arquitectura (SVG) y figura de la propuesta
+├── capturas/              # evidencia por hito (H1 a H6)
+├── demo/
+│   ├── docker-compose.yml # stack de monitoreo (Prometheus, Grafana, mktxp, blackbox)
+│   ├── prometheus/  grafana/  mktxp/  blackbox/
+│   ├── routers/           # cambios por hito para pegar en los routers (.rsc)
+│   ├── estacion/          # scripts para crear y preparar la VM estación
+│   ├── intruso/           # imagen, red y scripts del INTRUSO (H4) y la medición (H5)
+│   ├── ansible/           # playbooks de la defensa (H6)
+│   └── runbooks/          # paso a paso de cada hito
+├── poster/                # póster A1 (pendiente) y guía de la cátedra
+└── templates/             # plantillas y README originales de la cátedra
 ```
 
 ---
 
-## 4. Estructura del repositorio
+## Claves y secretos
 
-```
-goys-tp4-integrador/
-├── README.md              # esta guía
-├── progreso.md            # bitácora del grupo (qué hizo cada uno)
-├── templates/             # templates de modalidad + documento + checklist
-├── documento/             # documento final (PDF + fuente)
-├── poster/                # póster A1 (editable + PDF) + guía
-├── demo/                  # código/scripts de la demo (estación)
-├── capturas/              # capturas y evidencias
-└── diagramas/             # diagramas de arquitectura/topología
-```
-
----
-
-## 5. Trabajo colaborativo (cómo laburar en grupo)
-
-### Flujo recomendado (ramas cortas + pull requests)
-
-```bash
-# 1. Actualizar antes de empezar
-git pull origin main
-
-# 2. Rama por tarea
-git checkout -b documento-introduccion
-
-# 3. Trabajar y commitear seguido (mensajes claros)
-git add .
-git commit -m "documento: escribe introducción y objetivos"
-
-# 4. Subir y abrir PR
-git push origin documento-introduccion
-# En GitHub: abrir Pull Request → otro integrante revisa → merge
-
-# 5. Volver a main y repetir
-git checkout main
-git pull origin main
-```
-
-### Reglas de oro
-
-- **Commits de TODOS**: cada integrante commitea con su usuario. Verificar al final con `git log --oneline`.
-- **No pushear directo a `main` sin revisar** (usar PRs para el documento y decisiones grandes).
-- **Pull antes de push** para no pisar trabajo ajeno.
-- **Nada de binarios/secretos**: no subir contraseñas, IPs privadas reales ni archivos pesados (ver `.gitignore`).
-
----
-
-## 6. Entregables (comunes a las 3 modalidades)
-
-| Elemento | Descripción |
-|----------|-------------|
-| 📄 **Documento** | 5-7 págs (modalidades A y B) o 6-8 (C), en PDF, en `documento/` |
-| 🖼️ **Póster A1** | Sintetiza problema, metodología, resultados y conclusiones. Autocontenido. En `poster/` |
-| 💻 **Demo / estación** | Funciona en la laptop del grupo, **offline**. En `demo/` |
-| 📂 **Repositorio** | Documento, fuentes, configs, capturas, póster editable + PDF |
-
-> ✅ Checklist completo en `templates/checklist-entrega.md`. Usarlo antes del ensayo y antes de la Feria.
-
----
-
-## 7. Cronograma
-
-| Momento | Qué pasa |
-|---------|----------|
-| Clase 2 (jueves 20/8) | Se forman los grupos (3-4), los mismos para toda la cursada |
-| Durante la cursada | Cada clase alimenta el TP4; el grupo define modalidad y tema |
-| Jueves 29/10 | Muestra TP3 + preparación/ensayos del TP4 |
-| Jueves 5/11 | **Feria de Redes** — muestra y defensa |
-
----
-
-## 8. Evaluación (60%)
-
-La nota combina **dimensión técnica (60%)** y **"Saber Ser" (40%)** — trabajo en equipo, comunicación, compromiso, pensamiento crítico, ética.
-
-- **Promoción directa:** TP4 >= 6 (con todos los TPs >= 6 y 75% de asistencia).
-- **Cursada regular:** TP4 >= 4 (más el resto de condiciones).
-
-> ⚠️ **Ausencia injustificada en la Feria = TP4 desaprobado.**
-
----
-
-**GOYS — UTN FR La Plata** · Titular: Osvaldo Falabella · Bloque Redes/Operación: Emanuel Rodríguez
+Ninguna clave está en el repositorio. Las de los routers (OSPF, BGP, VRRP, `admin`, `monitor` y `prometheus`) viven solo en los routers y en una base de KeePassXC que se comparte por fuera de Git; en los `.rsc` y en los comandos van marcadores como `<CLAVE_MONITOREO_H3>`. Las credenciales del stack de monitoreo van en `demo/.env` y `demo/mktxp/mktxp.conf`, y la clave de Ansible en Ansible Vault; los tres están en `.gitignore`.
